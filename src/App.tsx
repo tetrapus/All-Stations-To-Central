@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
-import { BrowserRouter as Router } from "react-router-dom";
+import { BrowserRouter as Router, Route } from "react-router-dom";
 import { initFirebase } from "./init/firebase";
+import { Homepage } from "pages/Homepage";
 
 initFirebase();
 
@@ -17,7 +18,13 @@ function App() {
     });
   }, [systemDarkMode, setDarkMode]);
 
-  return <Router>woah an app cool</Router>;
+  return (
+    <Router>
+      <Route path="/">
+        <Homepage />
+      </Route>
+    </Router>
+  );
 }
 
 export default App;
