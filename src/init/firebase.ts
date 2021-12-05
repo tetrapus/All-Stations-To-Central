@@ -1,5 +1,6 @@
-import firebase from "firebase";
-import { useCallback, useEffect, useState } from "react";
+import { initializeApp } from "@firebase/app";
+import { getFirestore } from "@firebase/firestore";
+import { getAnalytics } from "firebase/analytics";
 
 let initialised = false;
 
@@ -18,69 +19,11 @@ export function initFirebase() {
   };
 
   // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
-  firebase.analytics();
+  initializeApp(firebaseConfig);
+  getAnalytics();
   initialised = true;
 }
 
 initFirebase();
 
-export const db = firebase.firestore();
-
-export function useFirestoreDoc<S, T>(
-  rootDoc: S | undefined | null,
-  collectionFn: (
-    rootDoc: S
-  ) =>
-    | firebase.firestore.DocumentReference<firebase.firestore.DocumentData>
-    | undefined,
-  transformerFn: (
-    snapshot: firebase.firestore.DocumentSnapshot<firebase.firestore.DocumentData>
-  ) => T
-): T | undefined {
-  const [state, setState] = useState<T>();
-  useEffect(() => {
-    console.log("Snapshot updated:", state);
-  }, [state]);
-  const collection = useCallback(collectionFn, []);
-  const transformer = useCallback(transformerFn, []);
-  useEffect(() => {
-    if (!rootDoc) {
-      return;
-    }
-    const query = collection(rootDoc);
-    if (!query) {
-      return;
-    }
-    return query.onSnapshot((snapshot) => setState(transformer(snapshot)));
-  }, [rootDoc, collection, transformer]);
-  return state;
-}
-
-export function useFirestore<S, T>(
-  rootDoc: S | undefined | null,
-  collectionFn: (
-    rootDoc: S
-  ) => firebase.firestore.Query<firebase.firestore.DocumentData> | undefined,
-  transformerFn: (
-    snapshot: firebase.firestore.QuerySnapshot<firebase.firestore.DocumentData>
-  ) => T
-): T | undefined {
-  const [state, setState] = useState<T>();
-  useEffect(() => {
-    console.log("Snapshot updated:", state);
-  }, [state]);
-  const collection = useCallback(collectionFn, []);
-  const transformer = useCallback(transformerFn, []);
-  useEffect(() => {
-    if (!rootDoc) {
-      return;
-    }
-    const query = collection(rootDoc);
-    if (!query) {
-      return;
-    }
-    return query.onSnapshot((snapshot) => setState(transformer(snapshot)));
-  }, [rootDoc, collection, transformer]);
-  return state;
-}
+export const db = getFirestore();

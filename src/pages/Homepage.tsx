@@ -16,7 +16,6 @@ function generateCode() {
 export function Homepage() {
   const history = useHistory();
   const [username, setUsername] = useLocalStorage<string>("username");
-  console.log(username);
 
   return (
     <Stack css={{ margin: "auto", width: 300, alignItems: "center" }}>
@@ -37,8 +36,10 @@ export function Homepage() {
         <>
           <strong>Choose a Username</strong>
           <TextInput
-            onSubmit={(event) => {
-              setUsername(event.currentTarget.value);
+            onKeyPress={(event) => {
+              if (event.key === "Enter") {
+                setUsername(event.currentTarget.value);
+              }
             }}
           />
         </>
