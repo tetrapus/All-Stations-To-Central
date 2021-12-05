@@ -2,7 +2,7 @@ import React from "react";
 import { WaitingRoom } from "./WaitingRoom";
 import { useParams } from "react-router-dom";
 import { useDocument } from "react-firebase-hooks/firestore";
-import { doc, DocumentReference, Timestamp } from "@firebase/firestore";
+import { doc, Timestamp } from "@firebase/firestore";
 import { db } from "init/firebase";
 
 interface Position {
@@ -79,7 +79,7 @@ interface Game {
 export function Game() {
   const { id } = useParams<{ id: string }>();
 
-  const [game, gameLoading, gameError] = useDocument(doc(db, "games", id));
+  useDocument(doc(db, "games", id));
 
   return <WaitingRoom />;
 }
