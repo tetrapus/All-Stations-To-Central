@@ -1,5 +1,5 @@
 import { initializeApp } from "@firebase/app";
-import { getFirestore } from "@firebase/firestore";
+import { collection, doc, getFirestore } from "@firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 
 let initialised = false;
@@ -27,3 +27,7 @@ export function initFirebase() {
 initFirebase();
 
 export const db = getFirestore();
+export const docRef = (path: string, ...args: string[]) =>
+  doc(db, path, ...args);
+export const collectionRef = (path: string, ...args: string[]) =>
+  collection(db, path, ...args);

@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
-import { BrowserRouter as Router, Route } from "react-router-dom";
+import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
 import { Homepage } from "pages/Homepage";
-import { Game } from "pages/game/Game";
+import { GameInterface } from "./pages/game/GameInterface";
+import useLocalStorage from "@rehooks/local-storage";
+import { TextInput } from "atoms/TextInput";
 
 function App() {
   const systemDarkMode = window.matchMedia("(prefers-color-scheme: dark)");
@@ -16,15 +18,34 @@ function App() {
     });
   }, [systemDarkMode, setDarkMode]);
 
+  const [username, setUsername] = useLocalStorage<string>("username");
+
   return (
-    <Router>
-      <Route path="/">
-        <Homepage />
-      </Route>
-      <Route path="/:id">
-        <Game />
-      </Route>
-    </Router>
+    <>
+      {username ? (
+        <Router>
+          <Switch>
+            <Route path="/:id">
+              <GameInterface />
+            </Route>
+            <Route path="/">
+              <Homepage />
+            </Route>
+          </Switch>
+        </Router>
+      ) : (
+        <>
+          <strong>Choose a Username</strong>
+          <TextInput
+            onKeyPress={(event) => {
+              if (event.key === "Enter") {
+                setUsername(event.currentTarget.value);
+              }
+            }}
+          />
+        </>
+      )}
+    </>
   );
 }
 

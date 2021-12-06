@@ -1,23 +1,24 @@
-import React from "react";
-import { WaitingRoom } from "./WaitingRoom";
-import { useParams } from "react-router-dom";
-import { useDocument } from "react-firebase-hooks/firestore";
-import { doc, Timestamp } from "@firebase/firestore";
-import { db } from "init/firebase";
+import { FirestoreDataConverter, Timestamp } from "@firebase/firestore";
 
-interface Position {
+export interface Position {
   x: number;
   y: number;
 }
 
-interface Destination {
+export interface Destination {
   name: string;
   position: Position;
 }
 
-type TrainColor = "red" | "orange" | "yellow" | "green" | "blue" | "rainbow";
+export type TrainColor =
+  | "red"
+  | "orange"
+  | "yellow"
+  | "green"
+  | "blue"
+  | "rainbow";
 
-interface Line {
+export interface Line {
   start: Destination["name"];
   end: Destination["name"];
   color: TrainColor[];
@@ -27,24 +28,24 @@ interface Line {
   owners: { [key: string]: string };
 }
 
-interface Route {
+export interface Route {
   start: Destination["name"];
   end: Destination["name"];
   points: number;
   isBig?: boolean; // TODO: Later feature
 }
 
-interface Card {
+export interface Card {
   color: TrainColor;
 }
 
-interface Bonus {
+export interface Bonus {
   name: string;
   points: number;
   criteria: (a: any, b: any) => number; // todo
 }
 
-interface Map {
+export interface Map {
   id: "sydney" | "nordic" | "europe" | "america";
   name: string;
   background: string;
@@ -58,7 +59,7 @@ interface Map {
   canMonopolizeLineMin: number;
 }
 
-interface Player {
+export interface Player {
   name: string;
   order: number;
   hand: Card[];
@@ -67,19 +68,21 @@ interface Player {
   stationCount: number; // TODO: later feature
 }
 
-interface Game {
+// todo
+export const PlayerConverter: FirestoreDataConverter<Player> = {
+  toFirestore: (player) => player,
+  fromFirestore: (playerRef) => playerRef.data() as Player,
+};
+
+export interface Game {
   id: string;
   created: Timestamp;
-  players: Player[];
   isStarted: boolean;
   map: Map["id"];
   turn: number;
 }
-
-export function Game() {
-  const { id } = useParams<{ id: string }>();
-
-  useDocument(doc(db, "games", id));
-
-  return <WaitingRoom />;
-}
+// todo
+export const GameConverter: FirestoreDataConverter<Game> = {
+  toFirestore: (game) => game,
+  fromFirestore: (gameRef) => gameRef.data() as Game,
+};
