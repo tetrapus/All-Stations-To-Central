@@ -5,8 +5,8 @@ import { TextInput } from "atoms/TextInput";
 import stations from "data/stations.json";
 import { useHistory } from "react-router";
 import { useLocalStorage } from "@rehooks/local-storage";
-import { setDoc, Timestamp } from "@firebase/firestore";
-import { docRef } from "init/firebase";
+import { runTransaction, Timestamp } from "@firebase/firestore";
+import { docRef, db } from "init/firebase";
 import { Game } from "data/Game";
 import { Player } from "../data/Game";
 
@@ -31,23 +31,32 @@ export function Homepage() {
         <TextButton
           onClick={async () => {
             const code = generateCode();
-            const game: Game = {
-              id: code,
-              created: Timestamp.now(),
-              isStarted: false,
-              map: "sydney",
-              turn: 0,
-            };
-            await setDoc(docRef("games", code), game);
-            const player: Player = {
-              name: username,
-              order: 1,
-              hand: [],
-              routes: [],
-              trainCount: 45,
-              stationCount: 0,
-            };
-            await setDoc(docRef("games", code, "players", username), player);
+            await runTransaction(db, async (transaction) => {
+              const game: Game = {
+                id: code,
+                created: Timestamp.now(),
+                isStarted: false,
+                map: "sydney",
+                turn: 0,
+              };
+              await transaction.set(docRef("games", code), game);
+              const players: Player[] = ["Joey", "Mitch", "Youki", "Ben"].map(
+                (username, idx) => ({
+                  name: username,
+                  order: idx,
+                  hand: [],
+                  routes: [],
+                  trainCount: 45,
+                  stationCount: 0,
+                })
+              );
+              for (let i = 0; i < players.length; i++) {
+                await transaction.set(
+                  docRef("games", code, "players", players[i].name),
+                  players[i]
+                );
+              }
+            });
             history.push(`/${code}`);
           }}
         >

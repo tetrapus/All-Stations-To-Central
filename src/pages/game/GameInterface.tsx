@@ -10,6 +10,7 @@ import { Flex } from "atoms/Flex";
 import { collectionRef, docRef } from "init/firebase";
 import { GameConverter, PlayerConverter } from "data/Game";
 import { TextButton } from "atoms/TextButton";
+import { orderBy, query } from "@firebase/firestore";
 
 export function GameInterface() {
   const { id } = useParams<{ id: string }>();
@@ -19,14 +20,17 @@ export function GameInterface() {
   ); // todo: error
 
   const [players, playersLoading] = useCollectionData(
-    collectionRef("games", id, "players").withConverter(PlayerConverter)
+    query(
+      collectionRef("games", id, "players").withConverter(PlayerConverter),
+      orderBy("order")
+    )
   ); // todo: loading
 
   if (playersLoading || gameLoading) {
     return null;
   }
 
-  if (!game) {
+  if (!game || !players) {
     return (
       <>
         Invalid game code!{" "}
@@ -40,12 +44,19 @@ export function GameInterface() {
   return (
     <Stack>
       <Flex>
-        {id} {game?.map}{" "}
         {players?.map((player) => (
-          <Flex key={player.name}>{player.name}</Flex>
+          <Flex
+            key={player.name}
+            css={{
+              margin: 16,
+              fontWeight: player.order === game.turn ? "bold" : "normal",
+            }}
+          >
+            {player.name}
+          </Flex>
         ))}
       </Flex>
-      <WaitingRoom players={players} />
+      <WaitingRoom game={game} players={players} />
     </Stack>
   );
 }

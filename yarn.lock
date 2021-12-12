@@ -6723,6 +6723,13 @@ isarray@1.0.0, isarray@^1.0.0, isarray@~1.0.0:
   resolved "https://registry.yarnpkg.com/isarray/-/isarray-1.0.0.tgz#bb935d48582cba168c06834957a54a3e07124f11"
   integrity sha1-u5NdSFgsuhaMBoNJV6VKPgcSTxE=
 
+isect@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/isect/-/isect-3.0.0.tgz#79f17dfee8f70bf7d7c0ddefeec38fb40c2eaae1"
+  integrity sha512-HEz/cX8Xp4ZMJ4Q7vzEVayTL/egY1D7dNyV0x88gJso7T09hIUT+njcnCMVtGWNcGbVrY692YgFrUK56TP/eWA==
+  dependencies:
+    splaytree "^2.0.2"
+
 isexe@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/isexe/-/isexe-2.0.0.tgz#e8fbf374dc556ff8947a10dcb0572d633f2cfa10"
@@ -10770,6 +10777,11 @@ spdy@^4.0.2:
     http-deceiver "^1.2.7"
     select-hose "^2.0.0"
     spdy-transport "^3.0.0"
+
+splaytree@^2.0.2:
+  version "2.0.3"
+  resolved "https://registry.yarnpkg.com/splaytree/-/splaytree-2.0.3.tgz#c43b5aba0444c9aa59cec9eb03c71389e1c6ce15"
+  integrity sha512-IziTvWQv9F1EiKq9XveosQRGTLrdUW0jLokpmAXz0+hnLgBZitvU0j4gUvCGASKwUQvCZaofhff1H8OmE2LRdA==
 
 split-string@^3.0.1, split-string@^3.0.2:
   version "3.1.0"

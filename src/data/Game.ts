@@ -18,6 +18,15 @@ export type TrainColor =
   | "blue"
   | "rainbow";
 
+export const trainColors = {
+  red: "red",
+  orange: "orange",
+  yellow: "yellow",
+  green: "green",
+  blue: "blue",
+  rainbow: "grey",
+};
+
 export interface Line {
   start: Destination["name"];
   end: Destination["name"];
@@ -46,13 +55,13 @@ export interface Bonus {
 }
 
 export interface Map {
-  id: "sydney" | "nordic" | "europe" | "america";
+  id: "sydney" | "nordic" | "europe" | "america" | "generated";
   name: string;
   background: string;
   destinations: Destination[];
   lines: Line[];
   routes: Route[];
-  deck: Card[];
+  deck: { [key: string]: number };
   bonuses: Bonus[];
   scoringTable: { [key: number]: number };
   players: { min: number; max: number };
@@ -79,6 +88,7 @@ export interface Game {
   created: Timestamp;
   isStarted: boolean;
   map: Map["id"];
+  mapCode?: string;
   turn: number;
 }
 // todo
