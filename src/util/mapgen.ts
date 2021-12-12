@@ -1,4 +1,6 @@
 import { Destination, Map, Position, trainColors } from "data/Game";
+import { UndirectedGraph } from "graphology";
+import dijkstra from "graphology-shortest-path/dijkstra";
 import { choose, generateCity, generateRegion } from "./citygen";
 import { sortBy } from "./sort-by";
 
@@ -7,6 +9,7 @@ interface MapSettings {
   connectivity: number;
   tunnels: number;
   ferries: number;
+  routes: number;
   players: { min: number; max: number };
   canMonopolizeLineMin: number;
   scoringTable: { [key: number]: number };
@@ -110,8 +113,8 @@ export function generateMap(mapSettings: MapSettings): Map {
     id: "generated",
     name: generateRegion(),
     background: "", // todo
-    destinations: [], // todo
-    lines: [], // todo
+    destinations: [],
+    lines: [],
     routes: [], // todo
     deck: {
       red: 12,
@@ -123,9 +126,9 @@ export function generateMap(mapSettings: MapSettings): Map {
       black: 12,
       pink: 12,
       rainbow: 14,
-    }, // todo
+    },
     bonuses: [], // todo
-    scoringTable: mapSettings.scoringTable, // todo
+    scoringTable: mapSettings.scoringTable,
     players: mapSettings.players, // todo: balance
     canMonopolizeLineMin: mapSettings.canMonopolizeLineMin, // todo: balance
   };
@@ -155,6 +158,7 @@ export function generateMap(mapSettings: MapSettings): Map {
     }
   }
   possiblePaths = sortBy(possiblePaths, (path) => path.distance);
+  const possibleRoutes = [...possiblePaths];
 
   const destinations = Object.fromEntries(
     map.destinations.map((destination) => [destination.name, destination])
@@ -243,5 +247,66 @@ export function generateMap(mapSettings: MapSettings): Map {
     lineCount[selectedLine.line.start] -= 1;
     lineCount[selectedLine.line.end] -= 1;
   }
+
+  // Any destinations missing a line? Get rid of them.
+  map.destinations = map.destinations.filter((city) =>
+    map.lines.find((line) => line.start === city.name || line.end === city.name)
+  );
+
+  // Build a graph
+  const graph = new UndirectedGraph();
+  map.destinations.forEach((destination) => graph.addNode(destination.name));
+  map.lines.forEach((line) =>
+    graph.addEdge(line.start, line.end, {
+      weight: line.length + (line.isFerry ? 1 : 0) + (line.isTunnel ? 1 : 0),
+    })
+  );
+
+  // Generate routes
+  while (map.routes.length < mapSettings.routes && possibleRoutes.length) {
+    // Pick a random route
+    const candidateRoute = possibleRoutes.splice(
+      Math.floor(possibleRoutes.length * Math.random()),
+      1
+    )[0];
+    // Discard if adjacent route
+    if (
+      map.lines.find(
+        (line) =>
+          new Set([
+            line.start,
+            line.end,
+            candidateRoute.start.name,
+            candidateRoute.end.name,
+          ]).size <= 2
+      )
+    ) {
+      continue;
+    }
+
+    // Compute shortest path
+    const path =
+      dijkstra.bidirectional(
+        graph,
+        candidateRoute.start.name,
+        candidateRoute.end.name
+      ) || [];
+    const length = path
+      .slice(1)
+      .map((_, idx) =>
+        graph.getEdgeAttribute(path[idx], path[idx + 1], "weight")
+      )
+      .reduce((a, b) => a + b, 0);
+    map.routes.push({
+      start: candidateRoute.start.name,
+      end: candidateRoute.end.name,
+      points: Math.round(
+        length / 2 +
+          (Math.random() - 0.25) * length * 0.25 +
+          2 * Math.log(length)
+      ), // todo
+    });
+  }
+  console.log(map);
   return map;
 }
