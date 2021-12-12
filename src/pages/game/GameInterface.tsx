@@ -131,8 +131,19 @@ export function GameInterface() {
     map.destinations.map((city) => [city.name, city])
   );
 
-  const RouteCard = ({ count, route }: { count?: number; route?: Route }) => (
-    <Stack css={{ alignItems: "center", fontSize: 13, margin: 4 }}>
+  const RouteCard = ({
+    count,
+    route,
+    onClick,
+  }: {
+    count?: number;
+    route?: Route;
+    onClick?: () => void;
+  }) => (
+    <Stack
+      css={{ alignItems: "center", fontSize: 13, margin: 4 }}
+      onClick={onClick}
+    >
       <Flex>{route ? route.start : null}</Flex>
       <Flex
         css={{
@@ -228,7 +239,7 @@ export function GameInterface() {
                 turn:
                   game.turnState === "routes-taken"
                     ? (game.turn + 1) % players.length
-                    : game.turn,
+                    : (game.turn + 1) % players.length, // FIXME: Testing hack
                 isReady:
                   game.isStarted &&
                   players.every(
@@ -439,7 +450,31 @@ export function GameInterface() {
               });
             }}
           ></Card>
-          <RouteCard count={game.boardState.routes.deck.length}></RouteCard>
+          <RouteCard
+            count={game.boardState.routes.deck.length}
+            onClick={() => {
+              if (!game.isReady || game.turnState !== "choose") {
+                return;
+              }
+              runTransaction(db, async (transaction) => {
+                await transaction.update(
+                  docRef("games", id, "players", currentPlayer.name),
+                  {
+                    "routeChoices.routes": [
+                      game.boardState.routes.deck.pop(),
+                      game.boardState.routes.deck.pop(),
+                      game.boardState.routes.deck.pop(),
+                    ],
+                    "routeChoices.keepMin": 1,
+                  }
+                );
+                await transaction.update(docRef("games", id), {
+                  "boardState.routes.deck": game.boardState.routes.deck,
+                  turnState: "routes-taken",
+                });
+              });
+            }}
+          ></RouteCard>
         </Flex>
         <Flex>
           <div
