@@ -3,14 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router";
 import { TextButton } from "atoms/TextButton";
 import { deleteDoc, runTransaction, setDoc } from "@firebase/firestore";
-import {
-  Game,
-  Map,
-  Player,
-  playerColors,
-  TrainColor,
-  trainColors,
-} from "data/Game";
+import { Game, Map, Player, TrainColor, trainColors } from "data/Game";
 import { db, docRef } from "init/firebase";
 import { distance, generateMap } from "../../util/mapgen";
 import { Flex } from "atoms/Flex";
@@ -18,6 +11,7 @@ import { fillRepeats } from "util/citygen";
 import arrayShuffle from "array-shuffle";
 import { sortBy } from "util/sort-by";
 import { Stack } from "atoms/Stack";
+import { playerColors } from "../../data/Game";
 
 interface Props {
   players: Player[];
@@ -243,6 +237,7 @@ export function WaitingRoom({ players, game }: Props) {
                   "boardState.carriages.faceUp": faceUp,
                   isStarted: true,
                   map: map,
+                  turnState: "choose",
                 });
               });
             }}
@@ -264,7 +259,7 @@ export function WaitingRoom({ players, game }: Props) {
         <span css={{ color: "white", fontWeight: "bold", fontSize: 24 }}>
           {map?.name}
         </span>
-        {map?.lines.map((line) => {
+        {map?.lines.map((line, lineNo) => {
           const start = map.destinations.find(
             (destination) => line.start === destination.name
           );
@@ -272,6 +267,13 @@ export function WaitingRoom({ players, game }: Props) {
             (destination) => line.end === destination.name
           );
           if (!start || !end) return null;
+          const counts = Object.fromEntries(cardCounts);
+          const color = line.color[0];
+
+          const playable =
+            game.turnState === "choose" &&
+            line.length <= currentPlayer.trainCount &&
+            counts[color] >= line.length;
           return (
             <Flex
               css={{
@@ -288,6 +290,33 @@ export function WaitingRoom({ players, game }: Props) {
                 transformOrigin: "top left",
                 height: 12,
                 width: `${distance(start, end) * 5.6}vw`,
+                [":hover"]: {
+                  ["--hovercolor"]: playable
+                    ? playerColors[currentPlayer.color]
+                    : undefined,
+                },
+              }}
+              onClick={() => {
+                if (playable) {
+                  // TODO: use rainbow, feedback if cannot take
+                  runTransaction(db, async (transaction) => {
+                    await transaction.update(docRef("games", id), {
+                      [`boardState.lines.${lineNo}.${0}`]: currentPlayer.name,
+                      turn: (game.turn + 1) % players.length,
+                      turnState: "choose",
+                    });
+                    await transaction.update(
+                      docRef("games", id, "players", currentPlayer.name),
+                      {
+                        trainCount: currentPlayer.trainCount - line.length,
+                        hand: fillRepeats(
+                          { ...counts, [color]: counts[color] - line.length },
+                          (color) => ({ color })
+                        ),
+                      }
+                    );
+                  });
+                }
               }}
             >
               <Flex css={{ width: "100%", paddingLeft: 12, paddingRight: 12 }}>
@@ -300,6 +329,11 @@ export function WaitingRoom({ players, game }: Props) {
                       borderStyle: "solid",
                       margin: "0px 8px 0px 8px",
                       flexGrow: 1,
+                      background: game.boardState.lines[lineNo]?.[0]
+                        ? players.find(
+                            (p) => p.name === game.boardState.lines[lineNo]?.[0]
+                          )?.color
+                        : "var(--hovercolor)",
                       transform: `translateY(${
                         (16 * line.length) / 2 -
                         Math.abs(

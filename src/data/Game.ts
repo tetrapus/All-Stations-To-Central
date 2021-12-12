@@ -118,7 +118,7 @@ export interface Game {
   isStarted: boolean;
   map?: Map;
   turn: number;
-  turnState: "choose" | "drawn" | "routes-taken" | "ferry-attempted";
+  turnState?: "choose" | "drawn" | "routes-taken" | "ferry-attempted";
   boardState: BoardState;
 }
 // todo

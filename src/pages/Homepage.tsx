@@ -49,7 +49,6 @@ export function Homepage() {
                   },
                   lines: {},
                 },
-                turnState: "choose",
               };
               await transaction.set(docRef("games", code), game);
               const players: Player[] = ["Joey", "Mitch", "Youki", "Ben"].map(
