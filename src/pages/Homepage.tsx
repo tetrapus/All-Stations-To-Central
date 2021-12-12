@@ -36,14 +36,27 @@ export function Homepage() {
                 id: code,
                 created: Timestamp.now(),
                 isStarted: false,
-                map: "sydney",
                 turn: 0,
+                boardState: {
+                  carriages: {
+                    deck: [],
+                    faceUp: [],
+                    discard: [],
+                  },
+                  routes: {
+                    deck: [],
+                    discard: [],
+                  },
+                  lines: {},
+                },
+                turnState: "choose",
               };
               await transaction.set(docRef("games", code), game);
               const players: Player[] = ["Joey", "Mitch", "Youki", "Ben"].map(
                 (username, idx) => ({
                   name: username,
                   order: idx,
+                  color: ["white", "black", "grey", "purple"][idx],
                   hand: [],
                   routes: [],
                   trainCount: 45,

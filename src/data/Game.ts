@@ -10,21 +10,19 @@ export interface Destination {
   position: Position;
 }
 
-export type TrainColor =
-  | "red"
-  | "orange"
-  | "yellow"
-  | "green"
-  | "blue"
-  | "rainbow";
+export type TrainColor = string;
 
-export const trainColors = {
+export const trainColors: { [key: TrainColor]: string } = {
   red: "red",
   orange: "orange",
   yellow: "yellow",
   green: "green",
   blue: "blue",
-  rainbow: "grey",
+  white: "white",
+  black: "#333",
+  pink: "pink",
+  rainbow:
+    "linear-gradient(122deg, rgba(57,0,129,1) 0%, rgba(66,48,173,1) 8%, rgba(44,117,190,1) 19%, rgba(42,197,144,1) 36%, rgba(144,253,29,1) 51%, rgba(250,253,45,1) 68%, rgba(255,160,54,1) 83%, rgba(207,49,49,1) 100%)",
 };
 
 export interface Line {
@@ -34,7 +32,6 @@ export interface Line {
   length: number;
   isFerry: boolean;
   isTunnel: boolean;
-  owners: { [key: string]: string };
 }
 
 export interface Route {
@@ -68,9 +65,18 @@ export interface Map {
   canMonopolizeLineMin: number;
 }
 
+type PlayerColor = string;
+
+export const playerColors: { [color: PlayerColor]: string } = {
+  white: "white",
+  black: "black",
+  purple: "purple",
+  grey: "grey",
+};
 export interface Player {
   name: string;
   order: number;
+  color: PlayerColor;
   hand: Card[];
   routes: Route[];
   trainCount: number;
@@ -83,13 +89,37 @@ export const PlayerConverter: FirestoreDataConverter<Player> = {
   fromFirestore: (playerRef) => playerRef.data() as Player,
 };
 
+export interface BoardState {
+  carriages: {
+    deck: Card[];
+    faceUp: Card[];
+    discard: Card[];
+  };
+  routes: {
+    deck: Card[];
+    discard: Card[];
+  };
+  lines: {
+    [lineno: number]: {
+      [trackno: number]: string;
+    };
+  };
+}
+
+export interface GameEvent {
+  timestamp: Timestamp;
+  author: string;
+  type: "drew-carriages" | "drew-routes" | "played-train";
+}
+
 export interface Game {
   id: string;
   created: Timestamp;
   isStarted: boolean;
-  map: Map["id"];
-  mapCode?: string;
+  map?: Map;
   turn: number;
+  turnState: "choose" | "drawn" | "routes-taken" | "ferry-attempted";
+  boardState: BoardState;
 }
 // todo
 export const GameConverter: FirestoreDataConverter<Game> = {

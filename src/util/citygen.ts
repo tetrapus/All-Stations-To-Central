@@ -43,8 +43,12 @@ const wordParts = {
     sd: 5,
     sf: 1,
     ck: 6,
+    tt: 3,
+    ll: 3,
+    nn: 3,
+    pp: 2,
+    mm: 2,
     sh: 6,
-    tt: 1,
     ch: 6,
   },
   vowels: {
@@ -99,17 +103,24 @@ const wordParts = {
   ),
 };
 
-export function choose(frequencies: { [value: string]: number }) {
-  const choices = Object.entries(frequencies).flatMap(([value, frequency]) =>
-    new Array(frequency).fill(value)
+export function fillRepeats<T>(
+  frequencies: { [key: string]: number },
+  builder: (key: string) => T
+) {
+  return Object.entries(frequencies).flatMap(([value, frequency]) =>
+    new Array(frequency).fill(0).map((_) => builder(value))
   );
+}
+
+export function choose(frequencies: { [value: string]: number }) {
+  const choices = fillRepeats(frequencies, (v) => v);
   var index = Math.floor(Math.random() * choices.length);
   return choices[index];
 }
 
 export function generateRegion() {
   const parts = [choose(wordParts.consonants)];
-  while ((parts.length < 7 && Math.random() > 0.3) || parts.length < 3) {
+  while ((parts.length < 4 && Math.random() > 0.3) || parts.length < 3) {
     parts.push(choose(wordParts.vowels));
     parts.push(
       choose({ ...wordParts.jointConsonants, ...wordParts.consonants })

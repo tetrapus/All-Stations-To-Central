@@ -113,7 +113,17 @@ export function generateMap(mapSettings: MapSettings): Map {
     destinations: [], // todo
     lines: [], // todo
     routes: [], // todo
-    deck: {}, // todo
+    deck: {
+      red: 12,
+      orange: 12,
+      yellow: 12,
+      green: 12,
+      blue: 12,
+      white: 12,
+      black: 12,
+      pink: 12,
+      rainbow: 14,
+    }, // todo
     bonuses: [], // todo
     scoringTable: mapSettings.scoringTable, // todo
     players: mapSettings.players, // todo: balance
@@ -191,9 +201,8 @@ export function generateMap(mapSettings: MapSettings): Map {
       color: [
         choose(Object.fromEntries(Object.keys(trainColors).map((e) => [e, 1]))),
       ],
-      isTunnel: false,
-      isFerry: false,
-      owners: {},
+      isTunnel: false, // todo
+      isFerry: false, // todo
     });
   }
   const lineCount = Object.fromEntries(
