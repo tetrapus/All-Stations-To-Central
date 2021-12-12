@@ -6,7 +6,7 @@ import {
 
 import { collectionRef } from "init/firebase";
 import { GameConverter, PlayerConverter } from "data/Game";
-import { orderBy, query } from "@firebase/firestore";
+import { deleteField, orderBy, query } from "@firebase/firestore";
 import useLocalStorage from "@rehooks/local-storage";
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router";
@@ -145,7 +145,6 @@ export function GameInterface() {
           position: "relative",
         }}
       >
-        <div css={{ margin: "auto" }}>{count}</div>
         {route ? (
           <>
             <div
@@ -170,6 +169,7 @@ export function GameInterface() {
                 top: `${(destinations[route.end].position.y / 9) * 80}%`,
               }}
             ></div>
+            <div css={{ margin: "auto" }}>{count}</div>
           </>
         ) : null}
       </Flex>
@@ -177,6 +177,73 @@ export function GameInterface() {
     </Stack>
   );
 
+  const RouteChoices = ({
+    routes,
+    maxDiscard,
+  }: {
+    routes: Route[];
+    maxDiscard: number;
+  }) => {
+    const [chosen, setChosen] = useState<number[]>([]);
+    return (
+      <>
+        {routes.map((route, idx) => (
+          <div
+            onClick={() => {
+              if (chosen.includes(idx)) {
+                setChosen(chosen.filter((x) => x !== idx));
+              } else if (chosen.length < maxDiscard) {
+                setChosen([...chosen, idx]);
+              }
+            }}
+            css={
+              chosen.includes(idx) ? { fontStyle: "italic", opacity: 0.5 } : {}
+            }
+          >
+            <RouteCard route={route} count={route.points} key={idx} />
+          </div>
+        ))}
+        <TextButton
+          css={{ fontSize: 14 }}
+          onClick={() => {
+            runTransaction(db, async (transaction) => {
+              await transaction.update(
+                docRef("games", id, "players", currentPlayer.name),
+                {
+                  routeChoices: deleteField(),
+                  routes: [
+                    ...routes.filter((route, idx) => !chosen.includes(idx)),
+                    ...currentPlayer.routes,
+                  ],
+                  isReady: true,
+                }
+              );
+              await transaction.update(docRef("games", id), {
+                "boardState.routes.discard": [
+                  ...game.boardState.routes.discard,
+                  ...routes.filter((route, idx) => chosen.includes(idx)),
+                ],
+                turnState:
+                  game.turnState === "routes-taken" ? "choose" : game.turnState,
+                turn:
+                  game.turnState === "routes-taken"
+                    ? (game.turn + 1) % players.length
+                    : game.turn,
+                isReady:
+                  game.isStarted &&
+                  players.every(
+                    (player) =>
+                      player.name === currentPlayer.name || player.isReady
+                  ),
+              });
+            });
+          }}
+        >
+          Discard {chosen.length}
+        </TextButton>
+      </>
+    );
+  };
   return (
     <Stack>
       <Flex>
@@ -187,6 +254,7 @@ export function GameInterface() {
               css={{
                 margin: 16,
                 fontWeight: player.order === game.turn ? "bold" : "normal",
+                fontStyle: player.isReady ? "normal" : "italic",
               }}
             >
               {player.name}
@@ -194,32 +262,38 @@ export function GameInterface() {
           ))}
         </Flex>
         <span>
-          {players.find((player) => player.name === username) ? (
-            <TextButton
-              onClick={async (event) => {
-                await deleteDoc(docRef("games", id, "players", username));
-              }}
-            >
-              Leave Game
-            </TextButton>
-          ) : (
-            <TextButton
-              onClick={async (event) => {
-                const player: Player = {
-                  name: username,
-                  order: 1,
-                  hand: [],
-                  color: "", // todo
-                  routes: [],
-                  trainCount: 45,
-                  stationCount: 0,
-                };
-                await setDoc(docRef("games", id, "players", username), player);
-              }}
-            >
-              Join Game
-            </TextButton>
-          )}
+          {!game.isStarted ? (
+            players.find((player) => player.name === username) ? (
+              <TextButton
+                onClick={async (event) => {
+                  await deleteDoc(docRef("games", id, "players", username));
+                }}
+              >
+                Leave Game
+              </TextButton>
+            ) : (
+              <TextButton
+                onClick={async (event) => {
+                  const player: Player = {
+                    name: username,
+                    order: 1,
+                    hand: [],
+                    color: "", // todo
+                    routes: [],
+                    trainCount: 45,
+                    stationCount: 0,
+                    isReady: false,
+                  };
+                  await setDoc(
+                    docRef("games", id, "players", username),
+                    player
+                  );
+                }}
+              >
+                Join Game
+              </TextButton>
+            )
+          ) : null}
           {!game.isStarted && map ? (
             <TextButton
               onClick={async () => {
@@ -245,7 +319,14 @@ export function GameInterface() {
                           carriages.pop(),
                           carriages.pop(),
                         ],
-                        routes: [routes.pop(), routes.pop(), routes.pop()],
+                        "routeChoices.routes": [
+                          routes.pop(),
+                          routes.pop(),
+                          routes.pop(),
+                          routes.pop(),
+                          routes.pop(),
+                        ],
+                        "routeChoices.keepMin": 2,
                       }
                     );
                   }
@@ -291,6 +372,9 @@ export function GameInterface() {
               color={card.color}
               onClick={() => {
                 runTransaction(db, async (transaction) => {
+                  if (!game.isReady) {
+                    return;
+                  }
                   if (
                     game.turnState === "choose" ||
                     game.turnState === "drawn"
@@ -328,6 +412,9 @@ export function GameInterface() {
           <Card
             count={game.boardState.carriages.deck.length}
             onClick={() => {
+              if (!game.isReady) {
+                return;
+              }
               runTransaction(db, async (transaction) => {
                 if (game.turnState === "choose" || game.turnState === "drawn") {
                   const newCard = game.boardState.carriages.deck.pop();
@@ -412,7 +499,7 @@ export function GameInterface() {
                       : undefined,
                   }}
                   onClick={() => {
-                    if (playable) {
+                    if (playable && game.isReady) {
                       // TODO: use rainbow, feedback if cannot take
                       runTransaction(db, async (transaction) => {
                         const discard = fillRepeats(
@@ -423,7 +510,7 @@ export function GameInterface() {
                           [`boardState.lines.${lineNo}.${0}`]:
                             currentPlayer.name,
                           "boardState.carriages.discard": [
-                            game.boardState.carriages.discard,
+                            ...game.boardState.carriages.discard,
                             ...discard,
                           ],
                           turn: (game.turn + 1) % players.length,
@@ -510,8 +597,8 @@ export function GameInterface() {
                     background: "rgba(0, 0, 0, 0.5)",
                     fontSize: 12,
                     padding: "2px 4px",
-                    maxWidth: "5vw",
                     transform: "translateX(-8px)",
+                    margin: "auto",
                   }}
                 >
                   {destination.name}
@@ -520,8 +607,24 @@ export function GameInterface() {
             ))}
           </div>
           <Stack css={{ marginLeft: "auto", marginTop: 16 }}>
+            {currentPlayer.routeChoices ? (
+              <Stack css={{ background: "pink" }}>
+                <div css={{ fontSize: 13, fontWeight: "bold", padding: 4 }}>
+                  Discard up to{" "}
+                  {currentPlayer.routeChoices.routes.length -
+                    currentPlayer.routeChoices.keepMin}
+                </div>
+                <RouteChoices
+                  routes={currentPlayer.routeChoices.routes}
+                  maxDiscard={
+                    currentPlayer.routeChoices.routes.length -
+                    currentPlayer.routeChoices.keepMin
+                  }
+                />
+              </Stack>
+            ) : null}
             {currentPlayer.routes.map((route, idx) => (
-              <RouteCard route={route} key={idx} />
+              <RouteCard route={route} count={route.points} key={idx} />
             ))}
           </Stack>
         </Flex>

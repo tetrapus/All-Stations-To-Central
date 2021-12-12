@@ -79,6 +79,11 @@ export interface Player {
   color: PlayerColor;
   hand: Card[];
   routes: Route[];
+  routeChoices?: {
+    routes: Route[];
+    keepMin: number;
+  };
+  isReady: boolean;
   trainCount: number;
   stationCount: number; // TODO: later feature
 }
@@ -116,6 +121,7 @@ export interface Game {
   id: string;
   created: Timestamp;
   isStarted: boolean;
+  isReady: boolean;
   map?: Map;
   turn: number;
   turnState?: "choose" | "drawn" | "routes-taken" | "ferry-attempted";

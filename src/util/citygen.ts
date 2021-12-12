@@ -40,7 +40,7 @@ const wordParts = {
     st: 6,
     sn: 1,
     sm: 2,
-    sd: 5,
+    sd: 2,
     sf: 1,
     ck: 6,
     tt: 3,

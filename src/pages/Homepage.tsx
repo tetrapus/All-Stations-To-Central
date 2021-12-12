@@ -36,6 +36,7 @@ export function Homepage() {
                 id: code,
                 created: Timestamp.now(),
                 isStarted: false,
+                isReady: false,
                 turn: 0,
                 boardState: {
                   carriages: {
@@ -60,6 +61,7 @@ export function Homepage() {
                   routes: [],
                   trainCount: 45,
                   stationCount: 0,
+                  isReady: false,
                 })
               );
               for (let i = 0; i < players.length; i++) {
