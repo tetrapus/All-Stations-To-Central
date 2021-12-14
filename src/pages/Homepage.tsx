@@ -9,6 +9,7 @@ import { runTransaction, Timestamp } from "@firebase/firestore";
 import { docRef, db } from "init/firebase";
 import { Game } from "data/Game";
 import { Player } from "../data/Game";
+import { generateColor } from "../util/colorgen";
 
 const randomElement = (array: any[]) =>
   array[Math.floor(Math.random() * array.length)];
@@ -52,18 +53,18 @@ export function Homepage() {
                 },
               };
               await transaction.set(docRef("games", code), game);
-              const players: Player[] = ["Joey", "Mitch", "Youki", "Ben"].map(
-                (username, idx) => ({
+              const players: Player[] = [
+                {
                   name: username,
-                  order: idx,
-                  color: ["white", "black", "grey", "purple"][idx],
+                  order: 0,
+                  color: generateColor(),
                   hand: [],
                   routes: [],
                   trainCount: 45,
                   stationCount: 0,
                   isReady: false,
-                })
-              );
+                },
+              ];
               for (let i = 0; i < players.length; i++) {
                 await transaction.set(
                   docRef("games", code, "players", players[i].name),
@@ -77,7 +78,14 @@ export function Homepage() {
           New Game
         </TextButton>
         <span css={{ marginTop: 24, marginBottom: 16 }}>or</span>
-        <TextInput placeholder="Enter Code"></TextInput>
+        <TextInput
+          placeholder="Enter Code"
+          onKeyPress={(e) => {
+            if (e.key === "Enter") {
+              history.push(`/${e.currentTarget.value}`);
+            }
+          }}
+        ></TextInput>
       </>
     </Stack>
   );

@@ -3,6 +3,7 @@ import {
   useCollectionData,
   useDocumentData,
 } from "react-firebase-hooks/firestore";
+import dijkstra from "graphology-shortest-path/dijkstra";
 
 import { collectionRef } from "init/firebase";
 import { GameConverter, PlayerConverter } from "data/Game";
@@ -20,7 +21,9 @@ import { fillRepeats } from "util/citygen";
 import arrayShuffle from "array-shuffle";
 import { sortBy } from "util/sort-by";
 import { Stack } from "atoms/Stack";
-import { playerColors, Route } from "../../data/Game";
+import { Route } from "../../data/Game";
+import { generateColor } from "../../util/colorgen";
+import { UndirectedGraph } from "graphology";
 
 export function GameInterface() {
   const { id } = useParams<{ id: string }>();
@@ -77,10 +80,12 @@ export function GameInterface() {
   const Card = ({
     color,
     count,
+    clickable,
     onClick,
   }: {
     color?: TrainColor;
     count?: number;
+    clickable?: boolean;
     onClick?: () => void;
   }) => (
     <div
@@ -92,6 +97,7 @@ export function GameInterface() {
         borderRadius: 3,
         border: "1px solid #999",
         background: color ? trainColors[color] : "white",
+        cursor: clickable ? "pointer" : undefined,
       }}
       onClick={onClick}
     >
@@ -116,16 +122,21 @@ export function GameInterface() {
     );
   }
 
-  const currentPlayer = players[game.turn]; // FIXME
-  const cardCounts: [TrainColor, number][] = sortBy(
-    Object.keys(trainColors)
-      ?.map((color): [string, number] => [
-        color,
-        currentPlayer.hand.filter((card) => card.color === color).length,
-      ])
-      .filter(([, count]) => count),
-    (v) => v[1]
-  );
+  const me = players.find((player) => player.name === username);
+  const currentPlayer = players[game.turn % players.length];
+
+  // Hand component
+  const cardCounts: [TrainColor, number][] = me
+    ? sortBy(
+        Object.keys(trainColors)
+          ?.map((color): [string, number] => [
+            color,
+            me.hand.filter((card) => card.color === color).length,
+          ])
+          .filter(([, count]) => count),
+        (v) => v[1]
+      )
+    : [];
 
   const destinations = Object.fromEntries(
     map.destinations.map((city) => [city.name, city])
@@ -134,14 +145,21 @@ export function GameInterface() {
   const RouteCard = ({
     count,
     route,
+    clickable,
     onClick,
   }: {
     count?: number;
     route?: Route;
+    clickable?: boolean;
     onClick?: () => void;
   }) => (
     <Stack
-      css={{ alignItems: "center", fontSize: 13, margin: 4 }}
+      css={{
+        alignItems: "center",
+        fontSize: 13,
+        margin: 4,
+        cursor: clickable ? "pointer" : undefined,
+      }}
       onClick={onClick}
     >
       <Flex>{route ? route.start : null}</Flex>
@@ -218,13 +236,16 @@ export function GameInterface() {
           css={{ fontSize: 14 }}
           onClick={() => {
             runTransaction(db, async (transaction) => {
+              if (!me) {
+                return;
+              }
               await transaction.update(
-                docRef("games", id, "players", currentPlayer.name),
+                docRef("games", id, "players", me.name),
                 {
                   routeChoices: deleteField(),
                   routes: [
                     ...routes.filter((route, idx) => !chosen.includes(idx)),
-                    ...currentPlayer.routes,
+                    ...me.routes,
                   ],
                   isReady: true,
                 }
@@ -237,14 +258,11 @@ export function GameInterface() {
                 turnState:
                   game.turnState === "routes-taken" ? "choose" : game.turnState,
                 turn:
-                  game.turnState === "routes-taken"
-                    ? (game.turn + 1) % players.length
-                    : (game.turn + 1) % players.length, // FIXME: Testing hack
+                  game.turnState === "routes-taken" ? game.turn + 1 : game.turn,
                 isReady:
                   game.isStarted &&
                   players.every(
-                    (player) =>
-                      player.name === currentPlayer.name || player.isReady
+                    (player) => player.name === me.name || player.isReady
                   ),
               });
             });
@@ -255,20 +273,94 @@ export function GameInterface() {
       </>
     );
   };
+
+  // TODO: Final turn logic
   return (
     <Stack>
       <Flex>
         <Flex css={{ marginRight: "auto" }}>
           {players?.map((player) => (
             <Flex
-              key={player.name}
               css={{
-                margin: 16,
-                fontWeight: player.order === game.turn ? "bold" : "normal",
-                fontStyle: player.isReady ? "normal" : "italic",
+                border: "4px solid",
+                borderColor:
+                  game.turn % players.length === player.order && game.isReady
+                    ? "#111"
+                    : "transparent",
+                background:
+                  game.turn % players.length === player.order && game.isReady
+                    ? "white"
+                    : "transparent",
+                // TODO: final turn logic
               }}
+              key={player.name}
             >
-              {player.name}
+              <Flex
+                css={{
+                  margin: "12px 16px",
+                  alignItems: "center",
+                }}
+              >
+                <Flex
+                  css={{
+                    alignItems: "center",
+                    fontWeight: player.name === username ? "bold" : "normal",
+                    fontStyle: player.isReady ? "normal" : "italic",
+                    marginRight: 8,
+                  }}
+                >
+                  <div
+                    css={{
+                      background: player.color,
+                      height: 16,
+                      width: 16,
+                      border: "1px solid black",
+                      margin: "4px 8px",
+                    }}
+                  ></div>
+                  {player.name}
+                </Flex>
+                <Flex css={{ alignItems: "center", fontSize: 13 }}>
+                  <Flex
+                    css={{
+                      height: 28,
+                      background: "white",
+                      width: 20,
+                      borderRadius: 2,
+                      border: "1px solid black",
+                    }}
+                  >
+                    <div css={{ margin: "auto" }}>{player.hand.length}</div>
+                  </Flex>{" "}
+                  <Stack>
+                    <Flex
+                      css={{
+                        background: "#333",
+                        width: 28,
+                        height: 16,
+                        borderRadius: 2,
+                        color: "white",
+                        marginLeft: 4,
+                      }}
+                    >
+                      <Flex css={{ margin: "auto" }}>
+                        {player.routes.length}
+                      </Flex>
+                    </Flex>
+                    <Flex css={{ alignItems: "center" }}>
+                      <div
+                        css={{
+                          height: 6,
+                          background: player.color,
+                          width: 16,
+                          margin: 4,
+                        }}
+                      ></div>{" "}
+                      {player.trainCount}
+                    </Flex>
+                  </Stack>
+                </Flex>
+              </Flex>
             </Flex>
           ))}
         </Flex>
@@ -289,7 +381,7 @@ export function GameInterface() {
                     name: username,
                     order: 1,
                     hand: [],
-                    color: "", // todo
+                    color: generateColor(), // todo
                     routes: [],
                     trainCount: 45,
                     stationCount: 0,
@@ -304,6 +396,80 @@ export function GameInterface() {
                 Join Game
               </TextButton>
             )
+          ) : null}
+          {game.isReady ? (
+            <>
+              {JSON.stringify(
+                Object.fromEntries(
+                  players.map((player) => [player.name, player.scores])
+                )
+              )}
+              <TextButton
+                onClick={() => {
+                  runTransaction(db, async (transaction) => {
+                    const graph = new UndirectedGraph();
+                    map.destinations.forEach((destination) =>
+                      graph.addNode(destination.name)
+                    );
+
+                    for (let i = 0; i < players.length; i++) {
+                      const player = players[i];
+                      const scores = {
+                        routes: {} as { [key: number]: number },
+                        lines: {} as { [key: number]: number },
+                        bonuses: {},
+                        stations: 0,
+                        total: 0,
+                      };
+                      // Calculate lines score
+                      const ownedLines = Object.entries(game.boardState.lines)
+                        .map(([lineno, owners]) =>
+                          Object.values(owners).includes(player.name)
+                            ? [lineno]
+                            : []
+                        )
+                        .flat(1)
+                        .map((lineno) => map.lines[Number(lineno)]);
+                      ownedLines.forEach((line) => {
+                        if (scores.lines[line.length] === undefined) {
+                          scores.lines[line.length] = 1;
+                        } else {
+                          scores.lines[line.length] += 1;
+                        }
+                        scores.total += map.scoringTable[line.length];
+                      });
+                      // Go through and score each route
+                      graph.clearEdges();
+                      ownedLines.forEach((line) =>
+                        graph.addEdge(line.start, line.end)
+                      );
+                      scores.routes = Object.fromEntries(
+                        player.routes.map((route, idx) => [
+                          idx,
+                          dijkstra.bidirectional(graph, route.start, route.end)
+                            ? route.points
+                            : -route.points,
+                        ])
+                      );
+                      scores.total += Object.values(scores.routes).reduce(
+                        (a, b) => a + b,
+                        0
+                      );
+                      // TODO: Bonuses
+                      // Save scores
+                      transaction.update(
+                        docRef("games", id, "players", player.name),
+                        {
+                          scores,
+                        }
+                      );
+                    }
+                  });
+                }}
+              >
+                Debug: Score Game
+              </TextButton>
+            </>
           ) : null}
           {!game.isStarted && map ? (
             <TextButton
@@ -359,19 +525,6 @@ export function GameInterface() {
       </Flex>
       <>
         <Flex>
-          <Stack css={{ margin: 8 }}>
-            <Stack css={{ alignItems: "center", margin: "auto" }}>
-              {currentPlayer.trainCount}
-              <div
-                css={{
-                  background: playerColors[currentPlayer.color],
-                  height: 10,
-                  width: "2vw",
-                  border: "1px solid black",
-                }}
-              ></div>
-            </Stack>
-          </Stack>
           <Flex css={{ marginRight: "auto" }}>
             {cardCounts?.map(([card, count], idx) => (
               <Card key={idx} color={card} count={count}></Card>
@@ -381,14 +534,20 @@ export function GameInterface() {
             <Card
               key={idx}
               color={card.color}
+              clickable={
+                (game.turnState === "choose" || game.turnState === "drawn") &&
+                game.isReady &&
+                currentPlayer &&
+                currentPlayer.name === username
+              }
               onClick={() => {
                 runTransaction(db, async (transaction) => {
-                  if (!game.isReady) {
-                    return;
-                  }
                   if (
-                    game.turnState === "choose" ||
-                    game.turnState === "drawn"
+                    (game.turnState === "choose" ||
+                      game.turnState === "drawn") &&
+                    game.isReady &&
+                    currentPlayer &&
+                    currentPlayer.name === username
                   ) {
                     const newCard = game.boardState.carriages.deck.pop();
                     if (!newCard) {
@@ -404,9 +563,7 @@ export function GameInterface() {
                         game.boardState.carriages.deck,
                       "boardState.carriages.faceUp":
                         game.boardState.carriages.faceUp,
-                      turn: newTurn
-                        ? (game.turn + 1) % players.length
-                        : game.turn,
+                      turn: newTurn ? game.turn + 1 : game.turn,
                       turnState: newTurn ? "choose" : "drawn",
                     });
                     transaction.update(
@@ -422,12 +579,20 @@ export function GameInterface() {
           ))}
           <Card
             count={game.boardState.carriages.deck.length}
+            clickable={
+              (game.turnState === "choose" || game.turnState === "drawn") &&
+              game.isReady &&
+              currentPlayer &&
+              currentPlayer.name === username
+            }
             onClick={() => {
-              if (!game.isReady) {
-                return;
-              }
               runTransaction(db, async (transaction) => {
-                if (game.turnState === "choose" || game.turnState === "drawn") {
+                if (
+                  (game.turnState === "choose" || game.turnState === "drawn") &&
+                  game.isReady &&
+                  currentPlayer &&
+                  currentPlayer.name === username
+                ) {
                   const newCard = game.boardState.carriages.deck.pop();
                   if (!newCard) {
                     throw new Error("Game state broken");
@@ -435,9 +600,7 @@ export function GameInterface() {
                   const newTurn = game.turnState === "drawn";
                   transaction.update(docRef("games", id), {
                     "boardState.carriages.deck": game.boardState.carriages.deck,
-                    turn: newTurn
-                      ? (game.turn + 1) % players.length
-                      : game.turn,
+                    turn: newTurn ? game.turn + 1 : game.turn,
                     turnState: newTurn ? "choose" : "drawn",
                   });
                   transaction.update(
@@ -452,8 +615,19 @@ export function GameInterface() {
           ></Card>
           <RouteCard
             count={game.boardState.routes.deck.length}
+            clickable={
+              currentPlayer &&
+              currentPlayer.name === username &&
+              game.isReady &&
+              game.turnState === "choose"
+            }
             onClick={() => {
-              if (!game.isReady || game.turnState !== "choose") {
+              if (
+                !currentPlayer ||
+                currentPlayer.name !== username ||
+                !game.isReady ||
+                game.turnState !== "choose"
+              ) {
                 return;
               }
               runTransaction(db, async (transaction) => {
@@ -481,7 +655,9 @@ export function GameInterface() {
             css={{
               width: `${width}vw`,
               height: `${height}vw`,
-              background: "#222",
+              background:
+                "linear-gradient(rgba(0,0,0,0.5), rgba(255,255,255,0.7)), url(https://sitesmedia.s3.amazonaws.com/creekconnections/files/2014/09/topomap.jpg)",
+              backgroundSize: "cover",
               border: "5px solid black",
               margin: 16,
               position: "relative",
@@ -500,9 +676,14 @@ export function GameInterface() {
               if (!start || !end) return null;
               const counts = Object.fromEntries(cardCounts);
               const color = line.color[0];
-
+              const owner = game.boardState.lines[lineNo]?.[0];
               const playable =
                 game.turnState === "choose" &&
+                game.isReady &&
+                game.isStarted &&
+                currentPlayer &&
+                currentPlayer.name === username &&
+                !owner &&
                 line.length <= currentPlayer.trainCount &&
                 counts[color] >= line.length;
               return (
@@ -521,16 +702,15 @@ export function GameInterface() {
                     transformOrigin: "top left",
                     height: 6,
                     width: `${distance(start, end) * 5.6}vw`,
+                    "--hovercolor": "rgba(0,0,0,0.2)",
                     ":hover": {
                       "--hovercolor": playable
-                        ? playerColors[currentPlayer.color]
+                        ? currentPlayer.color
                         : undefined,
                       cursor: playable ? "pointer" : undefined,
                     },
-                    background: game.boardState.lines[lineNo]?.[0]
-                      ? players.find(
-                          (p) => p.name === game.boardState.lines[lineNo]?.[0]
-                        )?.color
+                    background: owner
+                      ? players.find((p) => p.name === owner)?.color
                       : undefined,
                   }}
                   onClick={() => {
@@ -548,9 +728,15 @@ export function GameInterface() {
                             ...game.boardState.carriages.discard,
                             ...discard,
                           ],
-                          turn: (game.turn + 1) % players.length,
+                          turn: game.turn + 1,
                           turnState: "choose",
                         });
+                        if (currentPlayer.trainCount - line.length) {
+                          // Final turn triggered!!!
+                          await transaction.update(docRef("games", id), {
+                            finalTurn: game.turn + players.length - 1,
+                          });
+                        }
                         await transaction.update(
                           docRef("games", id, "players", currentPlayer.name),
                           {
@@ -642,23 +828,21 @@ export function GameInterface() {
             ))}
           </div>
           <Stack css={{ marginLeft: "auto", marginTop: 16 }}>
-            {currentPlayer.routeChoices ? (
+            {me?.routeChoices ? (
               <Stack css={{ background: "pink" }}>
                 <div css={{ fontSize: 13, fontWeight: "bold", padding: 4 }}>
                   Discard up to{" "}
-                  {currentPlayer.routeChoices.routes.length -
-                    currentPlayer.routeChoices.keepMin}
+                  {me.routeChoices.routes.length - me.routeChoices.keepMin}
                 </div>
                 <RouteChoices
-                  routes={currentPlayer.routeChoices.routes}
+                  routes={me.routeChoices.routes}
                   maxDiscard={
-                    currentPlayer.routeChoices.routes.length -
-                    currentPlayer.routeChoices.keepMin
+                    me.routeChoices.routes.length - me.routeChoices.keepMin
                   }
                 />
               </Stack>
             ) : null}
-            {currentPlayer.routes.map((route, idx) => (
+            {me?.routes.map((route, idx) => (
               <RouteCard route={route} count={route.points} key={idx} />
             ))}
           </Stack>

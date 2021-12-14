@@ -3,7 +3,6 @@ import "./App.css";
 import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
 import { Homepage } from "pages/Homepage";
 import { GameInterface } from "./pages/game/GameInterface";
-import useLocalStorage from "@rehooks/local-storage";
 import { TextInput } from "atoms/TextInput";
 
 function App() {
@@ -18,7 +17,9 @@ function App() {
     });
   }, [systemDarkMode, setDarkMode]);
 
-  const [username, setUsername] = useLocalStorage<string>("username");
+  const [username, setUsername] = useState<string | null>(
+    localStorage.getItem("username")
+  );
 
   return (
     <>
@@ -40,6 +41,7 @@ function App() {
             onKeyPress={(event) => {
               if (event.key === "Enter") {
                 setUsername(event.currentTarget.value);
+                localStorage.setItem("username", event.currentTarget.value);
               }
             }}
           />

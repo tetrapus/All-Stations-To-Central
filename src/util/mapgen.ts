@@ -256,6 +256,7 @@ export function generateMap(mapSettings: MapSettings): Map {
   // Build a graph
   const graph = new UndirectedGraph();
   map.destinations.forEach((destination) => graph.addNode(destination.name));
+  console.log(graph.nodes(), map.destinations, map.lines);
   map.lines.forEach((line) =>
     graph.addEdge(line.start, line.end, {
       weight: line.length + (line.isFerry ? 1 : 0) + (line.isTunnel ? 1 : 0),
@@ -269,7 +270,7 @@ export function generateMap(mapSettings: MapSettings): Map {
       Math.floor(possibleRoutes.length * Math.random()),
       1
     )[0];
-    // Discard if adjacent route
+    // Discard if adjacent route or nonexistant destination
     if (
       map.lines.find(
         (line) =>
@@ -285,27 +286,32 @@ export function generateMap(mapSettings: MapSettings): Map {
     }
 
     // Compute shortest path
-    const path =
-      dijkstra.bidirectional(
-        graph,
-        candidateRoute.start.name,
-        candidateRoute.end.name
-      ) || [];
-    const length = path
-      .slice(1)
-      .map((_, idx) =>
-        graph.getEdgeAttribute(path[idx], path[idx + 1], "weight")
-      )
-      .reduce((a, b) => a + b, 0);
-    map.routes.push({
-      start: candidateRoute.start.name,
-      end: candidateRoute.end.name,
-      points: Math.round(
-        length / 2 +
-          (Math.random() - 0.25) * length * 0.25 +
-          2 * Math.log(length)
-      ), // todo
-    });
+    try {
+      const path =
+        dijkstra.bidirectional(
+          graph,
+          candidateRoute.start.name,
+          candidateRoute.end.name
+        ) || [];
+
+      const length = path
+        .slice(1)
+        .map((_, idx) =>
+          graph.getEdgeAttribute(path[idx], path[idx + 1], "weight")
+        )
+        .reduce((a, b) => a + b, 0);
+      map.routes.push({
+        start: candidateRoute.start.name,
+        end: candidateRoute.end.name,
+        points: Math.round(
+          length / 2 +
+            (Math.random() - 0.25) * length * 0.25 +
+            2 * Math.log(length)
+        ), // todo
+      });
+    } catch (Error) {
+      continue;
+    }
   }
   console.log(map);
   return map;

@@ -67,12 +67,6 @@ export interface Map {
 
 type PlayerColor = string;
 
-export const playerColors: { [color: PlayerColor]: string } = {
-  white: "white",
-  black: "black",
-  purple: "purple",
-  grey: "grey",
-};
 export interface Player {
   name: string;
   order: number;
@@ -86,6 +80,13 @@ export interface Player {
   isReady: boolean;
   trainCount: number;
   stationCount: number; // TODO: later feature
+  scores?: {
+    routes: { [routeNo: number]: number };
+    lines: { [carriageCount: number]: number };
+    bonuses: { [bonusNo: number]: number };
+    stations: number;
+    total: number;
+  };
 }
 
 // todo
@@ -126,6 +127,7 @@ export interface Game {
   turn: number;
   turnState?: "choose" | "drawn" | "routes-taken" | "ferry-attempted";
   boardState: BoardState;
+  finalTurn?: number;
 }
 // todo
 export const GameConverter: FirestoreDataConverter<Game> = {
