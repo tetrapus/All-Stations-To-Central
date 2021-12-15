@@ -135,3 +135,21 @@ export const GameConverter: FirestoreDataConverter<Game> = {
   toFirestore: (game) => game,
   fromFirestore: (gameRef) => gameRef.data() as Game,
 };
+
+export const DEFAULT_MAP_SETTINGS = {
+  cities: 40,
+  connectivity: 3,
+  routes: 46,
+  ferries: 0,
+  tunnels: 0,
+  players: { min: 2, max: 6 },
+  canMonopolizeLineMin: 2,
+  scoringTable: {
+    1: 1,
+    2: 2,
+    3: 4,
+    4: 7,
+    5: 10,
+    6: 15,
+  },
+};

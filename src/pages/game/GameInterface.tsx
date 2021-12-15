@@ -6,16 +6,20 @@ import {
 import dijkstra from "graphology-shortest-path/dijkstra";
 
 import { collectionRef } from "init/firebase";
-import { GameConverter, PlayerConverter } from "data/Game";
+import {
+  DEFAULT_MAP_SETTINGS,
+  GameConverter,
+  PlayerConverter,
+} from "data/Game";
 import { deleteField, orderBy, query, Transaction } from "@firebase/firestore";
 import useLocalStorage from "@rehooks/local-storage";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useParams } from "react-router";
 import { TextButton } from "atoms/TextButton";
 import { deleteDoc, runTransaction, setDoc } from "@firebase/firestore";
-import { Map, Player, TrainColor, trainColors } from "data/Game";
+import { Player, TrainColor, trainColors } from "data/Game";
 import { db, docRef } from "init/firebase";
-import { distance, generateMap } from "../../util/mapgen";
+import { distance } from "../../util/mapgen";
 import { Flex } from "atoms/Flex";
 import { fillRepeats } from "util/citygen";
 import arrayShuffle from "array-shuffle";
@@ -28,6 +32,23 @@ import { Scoreboard } from "./Scoreboard";
 import { PlayerColor } from "./PlayerColor";
 import { ScoreCard } from "./ScoreCard";
 import { RouteCard } from "./RouteCard";
+import { generateMap } from "util/mapgen";
+
+/**
+ * TODO:
+ *
+ * Multiple Lines Support
+ * Map Sizing Customization
+ * Ferries
+ * Tunnels
+ * Event feed
+ * Sounds
+ * Map Presets
+ * Special Rules
+ * Rules Explainer
+ * Rainbow Route Color Selection
+ * Background Generation
+ **/
 
 export function GameInterface() {
   const { id } = useParams<{ id: string }>();
@@ -45,33 +66,7 @@ export function GameInterface() {
 
   const [username] = useLocalStorage<string>("username");
 
-  const [map, setMap] = useState<Map>();
-  useEffect(() => {
-    if (!game) return;
-    if (game.map) {
-      setMap(game.map);
-    } else {
-      setMap(
-        generateMap({
-          cities: 40,
-          connectivity: 3,
-          routes: 46,
-          ferries: 0,
-          tunnels: 0,
-          players: { min: 2, max: 6 },
-          canMonopolizeLineMin: 2,
-          scoringTable: {
-            1: 1,
-            2: 2,
-            3: 4,
-            4: 7,
-            5: 10,
-            6: 15,
-          },
-        })
-      );
-    }
-  }, [game]);
+  const map = game?.map;
 
   if (!username || !players || !map) {
     return null;
@@ -419,6 +414,19 @@ export function GameInterface() {
                 Join Game
               </TextButton>
             )
+          ) : null}
+          {!game.isStarted ? (
+            <TextButton
+              onClick={() => {
+                runTransaction(db, async (transaction) => {
+                  transaction.update(docRef("games", id), {
+                    map: generateMap(DEFAULT_MAP_SETTINGS),
+                  });
+                });
+              }}
+            >
+              Randomize Map
+            </TextButton>
           ) : null}
           {game.isReady && game.finalTurn && game.turn <= game.finalTurn ? (
             <strong css={{ margin: 8 }}>

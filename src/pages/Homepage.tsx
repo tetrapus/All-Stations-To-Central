@@ -7,9 +7,10 @@ import { useHistory } from "react-router";
 import { useLocalStorage } from "@rehooks/local-storage";
 import { runTransaction, Timestamp } from "@firebase/firestore";
 import { docRef, db } from "init/firebase";
-import { Game } from "data/Game";
+import { DEFAULT_MAP_SETTINGS, Game } from "data/Game";
 import { Player } from "../data/Game";
 import { generateColor } from "../util/colorgen";
+import { generateMap } from "util/mapgen";
 
 const randomElement = (array: any[]) =>
   array[Math.floor(Math.random() * array.length)];
@@ -51,6 +52,7 @@ export function Homepage() {
                   },
                   lines: {},
                 },
+                map: generateMap(DEFAULT_MAP_SETTINGS),
               };
               await transaction.set(docRef("games", code), game);
               const players: Player[] = [
