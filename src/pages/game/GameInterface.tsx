@@ -37,7 +37,6 @@ import { generateMap } from "util/mapgen";
 /**
  * TODO:
  *
- * Multiple Lines Support
  * Map Sizing Customization
  * Ferries
  * Tunnels
@@ -656,173 +655,181 @@ export function GameInterface() {
             <span css={{ color: "white", fontWeight: "bold", fontSize: 24 }}>
               {map?.name}
             </span>
-            {map?.lines.map((line, lineNo) => {
-              const start = map.destinations.find(
-                (destination) => line.start === destination.name
-              );
-              const end = map.destinations.find(
-                (destination) => line.end === destination.name
-              );
-              if (!start || !end) return null;
-              const counts = Object.fromEntries(cardCounts);
-              const color = line.color[0];
-              const owner = game.boardState.lines[lineNo]?.[0];
-              const playable =
-                game.turnState === "choose" &&
-                game.isReady &&
-                game.isStarted &&
-                currentPlayer &&
-                currentPlayer.name === username &&
-                !owner &&
-                line.length <= currentPlayer.trainCount &&
-                (line.color[0] === "rainbow"
-                  ? Math.max(...Object.values({ ...counts, rainbow: 0 }))
-                  : counts[color] || 0) +
-                  (counts["rainbow"] || 0) >=
-                  line.length;
-              return (
-                <Flex
-                  css={{
-                    left: `${(start.position.x * width) / ratio[0]}vw`,
-                    position: "absolute",
-                    top: `${(start.position.y * height) / ratio[1]}vw`,
-                    transform: `rotate(${
-                      Math.atan2(
-                        end.position.y - start.position.y,
-                        end.position.x - start.position.x
-                      ) *
-                      (180 / Math.PI)
-                    }deg) translateY(-50%)`,
-                    transformOrigin: "top left",
-                    height: 4,
-                    width: `${distance(start, end) * 5.6}vw`,
-                    "--hovercolor": "rgba(0,0,0,0.2)",
-                    ":hover": {
-                      "--hovercolor": playable
-                        ? currentPlayer.color
-                        : undefined,
-                      cursor: playable ? "pointer" : undefined,
-                    },
-                  }}
-                  onClick={() => {
-                    if (playable && game.isReady) {
-                      runTransaction(db, async (transaction) => {
-                        const color =
-                          line.color[0] === "rainbow"
-                            ? sortBy(
-                                Object.entries(counts),
-                                (e) => e[1]
-                              )[0][0] || line.color[0]
-                            : line.color[0];
-                        const discard = fillRepeats(
-                          { [color]: line.length },
-                          (color) => ({ color })
-                        );
-                        await transaction.update(docRef("games", id), {
-                          [`boardState.lines.${lineNo}.${0}`]:
-                            currentPlayer.name,
-                          "boardState.carriages.discard": [
-                            ...game.boardState.carriages.discard,
-                            ...discard,
-                          ],
-                          turn: nextTurn(transaction),
-                          turnState: "choose",
-                        });
-                        if (currentPlayer.trainCount - line.length <= 0) {
-                          // Final turn triggered!!!
+            {map?.lines.map((line, lineNo) =>
+              line.color.map((color, colorIdx) => {
+                const start = map.destinations.find(
+                  (destination) => line.start === destination.name
+                );
+                const end = map.destinations.find(
+                  (destination) => line.end === destination.name
+                );
+                if (!start || !end) return null;
+                const counts = Object.fromEntries(cardCounts);
+                const owner = game.boardState.lines[lineNo]?.[0];
+                const playable =
+                  game.turnState === "choose" &&
+                  game.isReady &&
+                  game.isStarted &&
+                  currentPlayer &&
+                  currentPlayer.name === username &&
+                  !owner &&
+                  line.length <= currentPlayer.trainCount &&
+                  (color === "rainbow"
+                    ? Math.max(...Object.values({ ...counts, rainbow: 0 }))
+                    : counts[color] || 0) +
+                    (counts["rainbow"] || 0) >=
+                    line.length;
+                return (
+                  <Flex
+                    css={{
+                      left: `${(start.position.x * width) / ratio[0]}vw`,
+                      position: "absolute",
+                      top: `${(start.position.y * height) / ratio[1]}vw`,
+                      transform: `rotate(${
+                        Math.atan2(
+                          end.position.y - start.position.y,
+                          end.position.x - start.position.x
+                        ) *
+                        (180 / Math.PI)
+                      }deg) translateY(-50%) translateY(${
+                        line.color.length > 1 ? (colorIdx - 0.5) * 16 : 0
+                      }px)`,
+                      transformOrigin: "top left",
+                      height: 4,
+                      width: `${distance(start, end) * 5.6}vw`,
+                      "--hovercolor": "rgba(0,0,0,0.2)",
+                      ":hover": {
+                        "--hovercolor": playable
+                          ? currentPlayer.color
+                          : undefined,
+                        cursor: playable ? "pointer" : undefined,
+                      },
+                    }}
+                    onClick={() => {
+                      if (playable && game.isReady) {
+                        runTransaction(db, async (transaction) => {
+                          const useColor =
+                            line.color[0] === "rainbow"
+                              ? sortBy(
+                                  Object.entries(counts),
+                                  (e) => e[1]
+                                )[0][0] || line.color[0]
+                              : line.color[0];
+                          const discard = fillRepeats(
+                            { [useColor]: line.length },
+                            (color) => ({ color: useColor })
+                          );
                           await transaction.update(docRef("games", id), {
-                            finalTurn: game.turn + players.length - 1,
+                            [`boardState.lines.${lineNo}.${colorIdx}`]:
+                              currentPlayer.name,
+                            "boardState.carriages.discard": [
+                              ...game.boardState.carriages.discard,
+                              ...discard,
+                            ],
+                            turn: nextTurn(transaction),
+                            turnState: "choose",
                           });
-                        }
-                        // Update any won routes
-                        const graph = getMapGraph();
-                        const ownedLines = getOwnedLines(currentPlayer);
-                        graph.addEdge(line.start, line.end);
+                          if (currentPlayer.trainCount - line.length <= 0) {
+                            // Final turn triggered!!!
+                            await transaction.update(docRef("games", id), {
+                              finalTurn: game.turn + players.length - 1,
+                            });
+                          }
+                          // Update any won routes
+                          const graph = getMapGraph();
+                          const ownedLines = getOwnedLines(currentPlayer);
+                          graph.addEdge(line.start, line.end);
 
-                        ownedLines.forEach((line) =>
-                          graph.addEdge(line.start, line.end)
-                        );
-                        const routes = currentPlayer.routes.map((route) => ({
-                          ...route,
-                          won:
-                            route.won ||
-                            !!dijkstra.bidirectional(
-                              graph,
-                              route.start,
-                              route.end
-                            ),
-                        }));
-                        await transaction.update(
-                          docRef("games", id, "players", currentPlayer.name),
-                          {
-                            trainCount: currentPlayer.trainCount - line.length,
-                            hand: fillRepeats(
-                              {
-                                ...counts,
-                                [color]: Math.max(
-                                  (counts[color] || 0) - line.length,
-                                  0
-                                ),
-                                rainbow:
-                                  (counts.rainbow || 0) +
-                                  Math.min(
+                          ownedLines.forEach((line) =>
+                            graph.addEdge(line.start, line.end)
+                          );
+                          const routes = currentPlayer.routes.map((route) => ({
+                            ...route,
+                            won:
+                              route.won ||
+                              !!dijkstra.bidirectional(
+                                graph,
+                                route.start,
+                                route.end
+                              ),
+                          }));
+                          await transaction.update(
+                            docRef("games", id, "players", currentPlayer.name),
+                            {
+                              trainCount:
+                                currentPlayer.trainCount - line.length,
+                              hand: fillRepeats(
+                                {
+                                  ...counts,
+                                  [color]: Math.max(
                                     (counts[color] || 0) - line.length,
                                     0
                                   ),
-                              },
-                              (color) => ({ color })
-                            ),
-                            routes: routes,
-                          }
-                        );
-                      });
-                    }
-                  }}
-                >
-                  <Flex
-                    css={{
-                      width: "100%",
-                      paddingLeft: 12,
-                      paddingRight: 12,
+                                  rainbow:
+                                    (counts.rainbow || 0) +
+                                    Math.min(
+                                      (counts[color] || 0) - line.length,
+                                      0
+                                    ),
+                                },
+                                (color) => ({ color })
+                              ),
+                              routes: routes,
+                            }
+                          );
+                        });
+                      }
                     }}
                   >
-                    {new Array(line.length).fill(0).map((_, idx) => (
-                      <Flex
-                        key={idx}
-                        css={{
-                          borderColor: trainColors[line.color[0]],
-                          borderImage: trainColors[line.color[0]],
-                          borderImageSlice: 1,
-                          borderWidth: 2,
-                          borderStyle: "solid",
-                          margin: "0px 4px 0px 4px",
-                          flexGrow: 1,
-                          height: 10,
-                          position: "relative",
-                          top: -4,
-                          background: game.boardState.lines[lineNo]?.[0]
-                            ? players.find(
-                                (p) =>
-                                  p.name === game.boardState.lines[lineNo]?.[0]
-                              )?.color
-                            : "var(--hovercolor)",
-                          transform: `translateY(${
-                            (10 * line.length) / 2 -
-                            Math.abs(
-                              (idx + 0.5 - Math.ceil(line.length / 2)) /
-                                line.length
-                            ) *
-                              (10 * line.length)
-                          }px) rotate(${
-                            -((idx + 0.5 - line.length / 2) / line.length) * 40
-                          }deg)`,
-                        }}
-                      ></Flex>
-                    ))}
+                    <Flex
+                      css={{
+                        width: "100%",
+                        paddingLeft: 12,
+                        paddingRight: 12,
+                      }}
+                    >
+                      {new Array(line.length).fill(0).map((_, idx) => (
+                        <Flex
+                          key={idx}
+                          css={{
+                            borderColor: trainColors[color],
+                            borderImage: trainColors[color],
+                            borderImageSlice: 1,
+                            borderWidth: 2,
+                            borderStyle: "solid",
+                            margin: "0px 4px 0px 4px",
+                            flexGrow: 1,
+                            height: 10,
+                            position: "relative",
+                            top: -4,
+                            background: game.boardState.lines[lineNo]?.[
+                              colorIdx
+                            ]
+                              ? players.find(
+                                  (p) =>
+                                    p.name ===
+                                    game.boardState.lines[lineNo]?.[colorIdx]
+                                )?.color
+                              : "var(--hovercolor)",
+                            transform: `translateY(${
+                              (10 * line.length) / 2 -
+                              Math.abs(
+                                (idx + 0.5 - Math.ceil(line.length / 2)) /
+                                  line.length
+                              ) *
+                                (10 * line.length)
+                            }px) rotate(${
+                              -((idx + 0.5 - line.length / 2) / line.length) *
+                              40
+                            }deg)`,
+                          }}
+                        ></Flex>
+                      ))}
+                    </Flex>
                   </Flex>
-                </Flex>
-              );
-            })}
+                );
+              })
+            )}
             {map?.destinations.map((destination) => (
               <Flex
                 css={{

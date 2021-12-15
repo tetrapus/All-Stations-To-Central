@@ -1,4 +1,11 @@
-import { Destination, Map, Position, trainColors } from "data/Game";
+import {
+  Destination,
+  Line,
+  Map,
+  Position,
+  Route,
+  trainColors,
+} from "data/Game";
 import { UndirectedGraph } from "graphology";
 import dijkstra from "graphology-shortest-path/dijkstra";
 import { choose, generateCity, generateRegion } from "./citygen";
@@ -263,6 +270,18 @@ export function generateMap(mapSettings: MapSettings): Map {
     })
   );
 
+  const getPathLength = (graph: UndirectedGraph, route: Route) => {
+    const path = dijkstra.bidirectional(graph, route.start, route.end) || [];
+
+    const length = path
+      .slice(1)
+      .map((_, idx) =>
+        graph.getEdgeAttribute(path[idx], path[idx + 1], "weight")
+      )
+      .reduce((a, b) => a + b, 0);
+    return length;
+  };
+
   // Generate routes
   while (map.routes.length < mapSettings.routes && possibleRoutes.length) {
     // Pick a random route
@@ -287,19 +306,11 @@ export function generateMap(mapSettings: MapSettings): Map {
 
     // Compute shortest path
     try {
-      const path =
-        dijkstra.bidirectional(
-          graph,
-          candidateRoute.start.name,
-          candidateRoute.end.name
-        ) || [];
-
-      const length = path
-        .slice(1)
-        .map((_, idx) =>
-          graph.getEdgeAttribute(path[idx], path[idx + 1], "weight")
-        )
-        .reduce((a, b) => a + b, 0);
+      const length = getPathLength(graph, {
+        start: candidateRoute.start.name,
+        end: candidateRoute.end.name,
+        points: 0,
+      });
       map.routes.push({
         start: candidateRoute.start.name,
         end: candidateRoute.end.name,
@@ -313,6 +324,38 @@ export function generateMap(mapSettings: MapSettings): Map {
       continue;
     }
   }
-  console.log(map);
+
+  const lineImportance = map.lines.map((line) => {
+    // Test what happens if we remove the edge from the graph...
+    const oldScores = map.routes.map((route) => getPathLength(graph, route));
+    graph.dropEdge(line.start, line.end);
+    const newScores = map.routes.map((route) => {
+      const length = getPathLength(graph, route);
+      if (!length) {
+        // If the route is completely severed, use the points as the delta score.
+        return route.points * 3;
+      } else {
+        return length;
+      }
+    });
+    graph.addEdge(line.start, line.end, {
+      weight: line.length + (line.isFerry ? 1 : 0) + (line.isTunnel ? 1 : 0),
+    });
+    return (
+      newScores.reduce((a, b) => a + b, 0) -
+      oldScores.reduce((a, b) => a + b, 0)
+    );
+  });
+  sortBy(
+    map.lines.map((line, idx) => [line, idx] as [Line, number]),
+    ([line, idx]) => lineImportance[idx]
+  )
+    .slice(0, Math.ceil(map.lines.length / 5))
+    .forEach(([line, idx]) => {
+      map.lines[idx].color.push(
+        choose(Object.fromEntries(Object.keys(trainColors).map((e) => [e, 1])))
+      );
+    });
+
   return map;
 }
