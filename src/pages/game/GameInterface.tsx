@@ -7,7 +7,7 @@ import dijkstra from "graphology-shortest-path/dijkstra";
 
 import { collectionRef } from "init/firebase";
 import { GameConverter, PlayerConverter } from "data/Game";
-import { deleteField, orderBy, query } from "@firebase/firestore";
+import { deleteField, orderBy, query, Transaction } from "@firebase/firestore";
 import useLocalStorage from "@rehooks/local-storage";
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router";
@@ -24,6 +24,10 @@ import { Stack } from "atoms/Stack";
 import { Route } from "../../data/Game";
 import { generateColor } from "../../util/colorgen";
 import { UndirectedGraph } from "graphology";
+import { Scoreboard } from "./Scoreboard";
+import { PlayerColor } from "./PlayerColor";
+import { ScoreCard } from "./ScoreCard";
+import { RouteCard } from "./RouteCard";
 
 export function GameInterface() {
   const { id } = useParams<{ id: string }>();
@@ -123,7 +127,10 @@ export function GameInterface() {
   }
 
   const me = players.find((player) => player.name === username);
-  const currentPlayer = players[game.turn % players.length];
+  const currentPlayer =
+    game.finalTurn && game.turn > game.finalTurn
+      ? undefined
+      : players[game.turn % players.length];
 
   // Hand component
   const cardCounts: [TrainColor, number][] = me
@@ -142,69 +149,65 @@ export function GameInterface() {
     map.destinations.map((city) => [city.name, city])
   );
 
-  const RouteCard = ({
-    count,
-    route,
-    clickable,
-    onClick,
-  }: {
-    count?: number;
-    route?: Route;
-    clickable?: boolean;
-    onClick?: () => void;
-  }) => (
-    <Stack
-      css={{
-        alignItems: "center",
-        fontSize: 13,
-        margin: 4,
-        cursor: clickable ? "pointer" : undefined,
-      }}
-      onClick={onClick}
-    >
-      <Flex>{route ? route.start : null}</Flex>
-      <Flex
-        css={{
-          background: "#333",
-          width: 64,
-          height: 36,
-          borderRadius: 2,
-          color: "white",
-          fontWeight: "bold",
-          position: "relative",
-        }}
-      >
-        {route ? (
-          <>
-            <div
-              css={{
-                background: "orange",
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                position: "absolute",
-                left: `${(destinations[route.start].position.x / 16) * 80}%`,
-                top: `${(destinations[route.start].position.y / 9) * 80}%`,
-              }}
-            ></div>
-            <div
-              css={{
-                background: "orange",
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                position: "absolute",
-                left: `${(destinations[route.end].position.x / 16) * 80}%`,
-                top: `${(destinations[route.end].position.y / 9) * 80}%`,
-              }}
-            ></div>
-            <div css={{ margin: "auto" }}>{count}</div>
-          </>
-        ) : null}
-      </Flex>
-      <Flex>{route ? route.end : "Routes"}</Flex>
-    </Stack>
-  );
+  const getMapGraph = () => {
+    const graph = new UndirectedGraph();
+    map.destinations.forEach((destination) => graph.addNode(destination.name));
+    return graph;
+  };
+
+  const getOwnedLines = (player: Player) => {
+    return Object.entries(game.boardState.lines)
+      .map(([lineno, owners]) =>
+        Object.values(owners).includes(player.name) ? [lineno] : []
+      )
+      .flat(1)
+      .map((lineno) => map.lines[Number(lineno)]);
+  };
+
+  const nextTurn = (transaction: Transaction) => {
+    if (game.finalTurn && game.turn >= game.finalTurn) {
+      const graph = getMapGraph();
+
+      for (let i = 0; i < players.length; i++) {
+        const player = players[i];
+        const scores = {
+          routes: {} as { [key: number]: number },
+          lines: {} as { [key: number]: number },
+          bonuses: {},
+          stations: 0,
+          total: 0,
+        };
+        // Calculate lines score
+        const ownedLines = getOwnedLines(player);
+        // Go through and score each route
+        graph.clearEdges();
+        ownedLines.forEach((line) => graph.addEdge(line.start, line.end));
+        ownedLines.forEach((line) => {
+          if (scores.lines[line.length] === undefined) {
+            scores.lines[line.length] = 1;
+          } else {
+            scores.lines[line.length] += 1;
+          }
+          scores.total += map.scoringTable[line.length];
+        });
+        scores.routes = Object.fromEntries(
+          player.routes.map((route, idx) => [
+            idx,
+            dijkstra.bidirectional(graph, route.start, route.end)
+              ? route.points
+              : -route.points,
+          ])
+        );
+        scores.total += Object.values(scores.routes).reduce((a, b) => a + b, 0);
+        // TODO: Bonuses
+        // Save scores
+        transaction.update(docRef("games", id, "players", player.name), {
+          scores,
+        });
+      }
+    }
+    return game.turn + 1;
+  };
 
   const RouteChoices = ({
     routes,
@@ -229,7 +232,12 @@ export function GameInterface() {
               chosen.includes(idx) ? { fontStyle: "italic", opacity: 0.5 } : {}
             }
           >
-            <RouteCard route={route} count={route.points} key={idx} />
+            <RouteCard
+              route={route}
+              count={route.points}
+              key={idx}
+              destinations={destinations}
+            />
           </div>
         ))}
         <TextButton
@@ -239,12 +247,23 @@ export function GameInterface() {
               if (!me) {
                 return;
               }
+              const graph = getMapGraph();
+              const ownedLines = getOwnedLines(me);
+
+              ownedLines.forEach((line) => graph.addEdge(line.start, line.end));
+              const newRoutes = routes.map((route) => ({
+                ...route,
+                won:
+                  route.won ||
+                  !!dijkstra.bidirectional(graph, route.start, route.end),
+              }));
+
               await transaction.update(
                 docRef("games", id, "players", me.name),
                 {
                   routeChoices: deleteField(),
                   routes: [
-                    ...routes.filter((route, idx) => !chosen.includes(idx)),
+                    ...newRoutes.filter((route, idx) => !chosen.includes(idx)),
                     ...me.routes,
                   ],
                   isReady: true,
@@ -258,7 +277,9 @@ export function GameInterface() {
                 turnState:
                   game.turnState === "routes-taken" ? "choose" : game.turnState,
                 turn:
-                  game.turnState === "routes-taken" ? game.turn + 1 : game.turn,
+                  game.turnState === "routes-taken"
+                    ? nextTurn(transaction)
+                    : game.turn,
                 isReady:
                   game.isStarted &&
                   players.every(
@@ -274,95 +295,97 @@ export function GameInterface() {
     );
   };
 
-  // TODO: Final turn logic
   return (
     <Stack>
       <Flex>
         <Flex css={{ marginRight: "auto" }}>
-          {players?.map((player) => (
-            <Flex
-              css={{
-                border: "4px solid",
-                borderColor:
-                  game.turn % players.length === player.order && game.isReady
-                    ? "#111"
-                    : "transparent",
-                background:
-                  game.turn % players.length === player.order && game.isReady
-                    ? "white"
-                    : "transparent",
-                // TODO: final turn logic
-              }}
-              key={player.name}
-            >
+          {players?.map((player) => {
+            return (
               <Flex
                 css={{
-                  margin: "12px 16px",
-                  alignItems: "center",
+                  border: "1px solid",
+                  margin: 3,
+                  borderColor:
+                    game.turn % players.length === player.order && game.isReady
+                      ? "#111"
+                      : "transparent",
+                  background:
+                    game.turn % players.length === player.order && game.isReady
+                      ? "white"
+                      : "transparent",
+                  opacity:
+                    game.finalTurn &&
+                    currentPlayer &&
+                    (game.turn - currentPlayer.order + player.order <
+                      game.turn ||
+                      game.turn - currentPlayer.order + player.order >
+                        game.finalTurn)
+                      ? 0.3
+                      : 1,
                 }}
+                key={player.name}
               >
                 <Flex
                   css={{
+                    margin: "12px 16px",
                     alignItems: "center",
-                    fontWeight: player.name === username ? "bold" : "normal",
-                    fontStyle: player.isReady ? "normal" : "italic",
-                    marginRight: 8,
                   }}
                 >
-                  <div
-                    css={{
-                      background: player.color,
-                      height: 16,
-                      width: 16,
-                      border: "1px solid black",
-                      margin: "4px 8px",
-                    }}
-                  ></div>
-                  {player.name}
-                </Flex>
-                <Flex css={{ alignItems: "center", fontSize: 13 }}>
                   <Flex
                     css={{
-                      height: 28,
-                      background: "white",
-                      width: 20,
-                      borderRadius: 2,
-                      border: "1px solid black",
+                      alignItems: "center",
+                      fontWeight: player.name === username ? "bold" : "normal",
+                      fontStyle: player.isReady ? "normal" : "italic",
+                      marginRight: 8,
                     }}
                   >
-                    <div css={{ margin: "auto" }}>{player.hand.length}</div>
-                  </Flex>{" "}
-                  <Stack>
+                    <PlayerColor player={player} />
+                    {player.name}
+                  </Flex>
+                  <Flex css={{ alignItems: "center", fontSize: 13 }}>
                     <Flex
                       css={{
-                        background: "#333",
-                        width: 28,
-                        height: 16,
+                        height: 28,
+                        background: "white",
+                        width: 20,
                         borderRadius: 2,
-                        color: "white",
-                        marginLeft: 4,
+                        border: "1px solid black",
                       }}
                     >
-                      <Flex css={{ margin: "auto" }}>
-                        {player.routes.length}
-                      </Flex>
-                    </Flex>
-                    <Flex css={{ alignItems: "center" }}>
-                      <div
+                      <div css={{ margin: "auto" }}>{player.hand.length}</div>
+                    </Flex>{" "}
+                    <Stack>
+                      <Flex
                         css={{
-                          height: 6,
-                          background: player.color,
-                          width: 16,
-                          margin: 4,
+                          background: "#333",
+                          width: 28,
+                          height: 16,
+                          borderRadius: 2,
+                          color: "white",
+                          marginLeft: 4,
                         }}
-                      ></div>{" "}
-                      {player.trainCount}
-                    </Flex>
-                  </Stack>
+                      >
+                        <Flex css={{ margin: "auto" }}>
+                          {player.routes.length}
+                        </Flex>
+                      </Flex>
+                      <Flex css={{ alignItems: "center" }}>
+                        <div
+                          css={{
+                            height: 6,
+                            background: player.color,
+                            width: 16,
+                            margin: 4,
+                          }}
+                        ></div>{" "}
+                        {player.trainCount}
+                      </Flex>
+                    </Stack>
+                  </Flex>
                 </Flex>
               </Flex>
-            </Flex>
-          ))}
+            );
+          })}
         </Flex>
         <span>
           {!game.isStarted ? (
@@ -397,79 +420,12 @@ export function GameInterface() {
               </TextButton>
             )
           ) : null}
-          {game.isReady ? (
-            <>
-              {JSON.stringify(
-                Object.fromEntries(
-                  players.map((player) => [player.name, player.scores])
-                )
-              )}
-              <TextButton
-                onClick={() => {
-                  runTransaction(db, async (transaction) => {
-                    const graph = new UndirectedGraph();
-                    map.destinations.forEach((destination) =>
-                      graph.addNode(destination.name)
-                    );
-
-                    for (let i = 0; i < players.length; i++) {
-                      const player = players[i];
-                      const scores = {
-                        routes: {} as { [key: number]: number },
-                        lines: {} as { [key: number]: number },
-                        bonuses: {},
-                        stations: 0,
-                        total: 0,
-                      };
-                      // Calculate lines score
-                      const ownedLines = Object.entries(game.boardState.lines)
-                        .map(([lineno, owners]) =>
-                          Object.values(owners).includes(player.name)
-                            ? [lineno]
-                            : []
-                        )
-                        .flat(1)
-                        .map((lineno) => map.lines[Number(lineno)]);
-                      ownedLines.forEach((line) => {
-                        if (scores.lines[line.length] === undefined) {
-                          scores.lines[line.length] = 1;
-                        } else {
-                          scores.lines[line.length] += 1;
-                        }
-                        scores.total += map.scoringTable[line.length];
-                      });
-                      // Go through and score each route
-                      graph.clearEdges();
-                      ownedLines.forEach((line) =>
-                        graph.addEdge(line.start, line.end)
-                      );
-                      scores.routes = Object.fromEntries(
-                        player.routes.map((route, idx) => [
-                          idx,
-                          dijkstra.bidirectional(graph, route.start, route.end)
-                            ? route.points
-                            : -route.points,
-                        ])
-                      );
-                      scores.total += Object.values(scores.routes).reduce(
-                        (a, b) => a + b,
-                        0
-                      );
-                      // TODO: Bonuses
-                      // Save scores
-                      transaction.update(
-                        docRef("games", id, "players", player.name),
-                        {
-                          scores,
-                        }
-                      );
-                    }
-                  });
-                }}
-              >
-                Debug: Score Game
-              </TextButton>
-            </>
+          {game.isReady && game.finalTurn && game.turn <= game.finalTurn ? (
+            <strong css={{ margin: 8 }}>
+              {game.finalTurn === game.turn
+                ? "Final Turn"
+                : `${game.finalTurn - game.turn} turns left`}
+            </strong>
           ) : null}
           {!game.isStarted && map ? (
             <TextButton
@@ -522,7 +478,11 @@ export function GameInterface() {
             </TextButton>
           ) : null}
         </span>
+        <ScoreCard map={map} />
       </Flex>
+      {game.finalTurn && game.finalTurn < game.turn ? (
+        <Scoreboard players={players} destinations={destinations}></Scoreboard>
+      ) : null}
       <>
         <Flex>
           <Flex css={{ marginRight: "auto" }}>
@@ -553,6 +513,11 @@ export function GameInterface() {
                     if (!newCard) {
                       throw new Error("Game state broken");
                     }
+                    if (!game.boardState.carriages.deck.length) {
+                      game.boardState.carriages.deck =
+                        game.boardState.carriages.discard;
+                      game.boardState.carriages.discard = [];
+                    }
                     game.boardState.carriages.faceUp.splice(idx, 1, newCard);
                     // TODO: Rainbow Refresh rule
                     // TODO: Cannot draw rainbow on 'drawn' phase rule
@@ -561,9 +526,11 @@ export function GameInterface() {
                     transaction.update(docRef("games", id), {
                       "boardState.carriages.deck":
                         game.boardState.carriages.deck,
+                      "boardState.carriages.discard":
+                        game.boardState.carriages.discard,
                       "boardState.carriages.faceUp":
                         game.boardState.carriages.faceUp,
-                      turn: newTurn ? game.turn + 1 : game.turn,
+                      turn: newTurn ? nextTurn(transaction) : game.turn,
                       turnState: newTurn ? "choose" : "drawn",
                     });
                     transaction.update(
@@ -597,10 +564,17 @@ export function GameInterface() {
                   if (!newCard) {
                     throw new Error("Game state broken");
                   }
+                  if (!game.boardState.carriages.deck.length) {
+                    game.boardState.carriages.deck =
+                      game.boardState.carriages.discard;
+                    game.boardState.carriages.discard = [];
+                  }
                   const newTurn = game.turnState === "drawn";
                   transaction.update(docRef("games", id), {
                     "boardState.carriages.deck": game.boardState.carriages.deck,
-                    turn: newTurn ? game.turn + 1 : game.turn,
+                    "boardState.carriages.discard":
+                      game.boardState.carriages.discard,
+                    turn: newTurn ? nextTurn(transaction) : game.turn,
                     turnState: newTurn ? "choose" : "drawn",
                   });
                   transaction.update(
@@ -621,6 +595,7 @@ export function GameInterface() {
               game.isReady &&
               game.turnState === "choose"
             }
+            destinations={destinations}
             onClick={() => {
               if (
                 !currentPlayer ||
@@ -631,6 +606,13 @@ export function GameInterface() {
                 return;
               }
               runTransaction(db, async (transaction) => {
+                if (game.boardState.routes.deck.length <= 3) {
+                  game.boardState.routes.deck = [
+                    ...game.boardState.routes.deck,
+                    ...arrayShuffle(game.boardState.routes.discard),
+                  ];
+                  game.boardState.routes.discard = [];
+                }
                 await transaction.update(
                   docRef("games", id, "players", currentPlayer.name),
                   {
@@ -644,6 +626,7 @@ export function GameInterface() {
                 );
                 await transaction.update(docRef("games", id), {
                   "boardState.routes.deck": game.boardState.routes.deck,
+                  "boardState.routes.discard": game.boardState.routes.discard,
                   turnState: "routes-taken",
                 });
               });
@@ -655,8 +638,7 @@ export function GameInterface() {
             css={{
               width: `${width}vw`,
               height: `${height}vw`,
-              background:
-                "linear-gradient(rgba(0,0,0,0.5), rgba(255,255,255,0.7)), url(https://sitesmedia.s3.amazonaws.com/creekconnections/files/2014/09/topomap.jpg)",
+              background: currentPlayer?.name === username ? "black" : "#333",
               backgroundSize: "cover",
               border: "5px solid black",
               margin: 16,
@@ -685,7 +667,11 @@ export function GameInterface() {
                 currentPlayer.name === username &&
                 !owner &&
                 line.length <= currentPlayer.trainCount &&
-                counts[color] >= line.length;
+                (line.color[0] === "rainbow"
+                  ? Math.max(...Object.values({ ...counts, rainbow: 0 }))
+                  : counts[color] || 0) +
+                  (counts["rainbow"] || 0) >=
+                  line.length;
               return (
                 <Flex
                   css={{
@@ -700,7 +686,7 @@ export function GameInterface() {
                       (180 / Math.PI)
                     }deg) translateY(-50%)`,
                     transformOrigin: "top left",
-                    height: 6,
+                    height: 4,
                     width: `${distance(start, end) * 5.6}vw`,
                     "--hovercolor": "rgba(0,0,0,0.2)",
                     ":hover": {
@@ -709,14 +695,17 @@ export function GameInterface() {
                         : undefined,
                       cursor: playable ? "pointer" : undefined,
                     },
-                    background: owner
-                      ? players.find((p) => p.name === owner)?.color
-                      : undefined,
                   }}
                   onClick={() => {
                     if (playable && game.isReady) {
-                      // TODO: use rainbow, feedback if cannot take
                       runTransaction(db, async (transaction) => {
+                        const color =
+                          line.color[0] === "rainbow"
+                            ? sortBy(
+                                Object.entries(counts),
+                                (e) => e[1]
+                              )[0][0] || line.color[0]
+                            : line.color[0];
                         const discard = fillRepeats(
                           { [color]: line.length },
                           (color) => ({ color })
@@ -728,15 +717,33 @@ export function GameInterface() {
                             ...game.boardState.carriages.discard,
                             ...discard,
                           ],
-                          turn: game.turn + 1,
+                          turn: nextTurn(transaction),
                           turnState: "choose",
                         });
-                        if (currentPlayer.trainCount - line.length) {
+                        if (currentPlayer.trainCount - line.length <= 0) {
                           // Final turn triggered!!!
                           await transaction.update(docRef("games", id), {
                             finalTurn: game.turn + players.length - 1,
                           });
                         }
+                        // Update any won routes
+                        const graph = getMapGraph();
+                        const ownedLines = getOwnedLines(currentPlayer);
+                        graph.addEdge(line.start, line.end);
+
+                        ownedLines.forEach((line) =>
+                          graph.addEdge(line.start, line.end)
+                        );
+                        const routes = currentPlayer.routes.map((route) => ({
+                          ...route,
+                          won:
+                            route.won ||
+                            !!dijkstra.bidirectional(
+                              graph,
+                              route.start,
+                              route.end
+                            ),
+                        }));
                         await transaction.update(
                           docRef("games", id, "players", currentPlayer.name),
                           {
@@ -744,10 +751,20 @@ export function GameInterface() {
                             hand: fillRepeats(
                               {
                                 ...counts,
-                                [color]: counts[color] - line.length,
+                                [color]: Math.max(
+                                  (counts[color] || 0) - line.length,
+                                  0
+                                ),
+                                rainbow:
+                                  (counts.rainbow || 0) +
+                                  Math.min(
+                                    (counts[color] || 0) - line.length,
+                                    0
+                                  ),
                               },
                               (color) => ({ color })
                             ),
+                            routes: routes,
                           }
                         );
                       });
@@ -755,16 +772,22 @@ export function GameInterface() {
                   }}
                 >
                   <Flex
-                    css={{ width: "100%", paddingLeft: 12, paddingRight: 12 }}
+                    css={{
+                      width: "100%",
+                      paddingLeft: 12,
+                      paddingRight: 12,
+                    }}
                   >
                     {new Array(line.length).fill(0).map((_, idx) => (
                       <Flex
                         key={idx}
                         css={{
                           borderColor: trainColors[line.color[0]],
+                          borderImage: trainColors[line.color[0]],
+                          borderImageSlice: 1,
                           borderWidth: 2,
                           borderStyle: "solid",
-                          margin: "0px 8px 0px 8px",
+                          margin: "0px 4px 0px 4px",
                           flexGrow: 1,
                           height: 10,
                           position: "relative",
@@ -776,12 +799,12 @@ export function GameInterface() {
                               )?.color
                             : "var(--hovercolor)",
                           transform: `translateY(${
-                            (16 * line.length) / 2 -
+                            (10 * line.length) / 2 -
                             Math.abs(
                               (idx + 0.5 - Math.ceil(line.length / 2)) /
                                 line.length
                             ) *
-                              (16 * line.length)
+                              (10 * line.length)
                           }px) rotate(${
                             -((idx + 0.5 - line.length / 2) / line.length) * 40
                           }deg)`,
@@ -816,8 +839,8 @@ export function GameInterface() {
                 <div
                   css={{
                     background: "rgba(0, 0, 0, 0.5)",
-                    fontSize: 12,
-                    padding: "2px 4px",
+                    fontSize: 11,
+                    padding: "2px",
                     transform: "translateX(-8px)",
                     margin: "auto",
                   }}
@@ -830,7 +853,14 @@ export function GameInterface() {
           <Stack css={{ marginLeft: "auto", marginTop: 16 }}>
             {me?.routeChoices ? (
               <Stack css={{ background: "pink" }}>
-                <div css={{ fontSize: 13, fontWeight: "bold", padding: 4 }}>
+                <div
+                  css={{
+                    fontSize: 13,
+                    fontWeight: "bold",
+                    padding: 4,
+                    textAlign: "center",
+                  }}
+                >
                   Discard up to{" "}
                   {me.routeChoices.routes.length - me.routeChoices.keepMin}
                 </div>
@@ -843,7 +873,12 @@ export function GameInterface() {
               </Stack>
             ) : null}
             {me?.routes.map((route, idx) => (
-              <RouteCard route={route} count={route.points} key={idx} />
+              <RouteCard
+                route={route}
+                count={route.points}
+                destinations={destinations}
+                key={idx}
+              />
             ))}
           </Stack>
         </Flex>

@@ -13,14 +13,14 @@ export interface Destination {
 export type TrainColor = string;
 
 export const trainColors: { [key: TrainColor]: string } = {
-  red: "red",
-  orange: "orange",
-  yellow: "yellow",
-  green: "green",
-  blue: "blue",
+  red: "#f84438",
+  orange: "#ffa32d",
+  yellow: "#ffeb3b",
+  green: "#72cc72",
+  blue: "#29b2fe",
   white: "white",
-  black: "#333",
-  pink: "pink",
+  black: "#75787d",
+  pink: "#ff8eb6",
   rainbow:
     "linear-gradient(122deg, rgba(57,0,129,1) 0%, rgba(66,48,173,1) 8%, rgba(44,117,190,1) 19%, rgba(42,197,144,1) 36%, rgba(144,253,29,1) 51%, rgba(250,253,45,1) 68%, rgba(255,160,54,1) 83%, rgba(207,49,49,1) 100%)",
 };
@@ -39,6 +39,7 @@ export interface Route {
   end: Destination["name"];
   points: number;
   isBig?: boolean; // TODO: Later feature
+  won?: boolean;
 }
 
 export interface Card {
