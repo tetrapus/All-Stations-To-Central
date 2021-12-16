@@ -120,7 +120,8 @@ export interface BoardState {
 export interface GameEvent {
   timestamp: Timestamp;
   author: string;
-  type: "drew-carriages" | "drew-routes" | "played-train";
+  type?: "drew-carriages" | "drew-routes" | "played-train";
+  message: string;
 }
 
 export interface Game {

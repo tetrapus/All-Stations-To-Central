@@ -11,7 +11,13 @@ import {
   GameConverter,
   PlayerConverter,
 } from "data/Game";
-import { deleteField, orderBy, query, Transaction } from "@firebase/firestore";
+import {
+  deleteField,
+  orderBy,
+  query,
+  serverTimestamp,
+  Transaction,
+} from "@firebase/firestore";
 import useLocalStorage from "@rehooks/local-storage";
 import React, { useState } from "react";
 import { useParams } from "react-router";
@@ -35,6 +41,7 @@ import { RouteCard } from "./RouteCard";
 import { generateMap } from "util/mapgen";
 import { CELL_SIZE } from "data/Board";
 import { TextInput } from "atoms/TextInput";
+import { addDoc } from "firebase/firestore";
 
 /**
  * TODO:
@@ -62,6 +69,10 @@ export function GameInterface() {
       collectionRef("games", id, "players").withConverter(PlayerConverter),
       orderBy("order")
     )
+  ); // todo: loading
+
+  const [events, eventsLoading] = useCollectionData(
+    query(collectionRef("games", id, "events"), orderBy("timestamp", "desc"))
   ); // todo: loading
 
   const [username] = useLocalStorage<string>("username");
@@ -279,6 +290,11 @@ export function GameInterface() {
                     (player) => player.name === me.name || player.isReady
                   ),
               });
+              await addDoc(collectionRef("games", id, "events"), {
+                author: username,
+                timestamp: serverTimestamp(),
+                message: `${username} chose their routes`,
+              });
             });
           }}
         >
@@ -386,6 +402,11 @@ export function GameInterface() {
               <TextButton
                 onClick={async (event) => {
                   await deleteDoc(docRef("games", id, "players", username));
+                  await addDoc(collectionRef("games", id, "events"), {
+                    author: username,
+                    timestamp: serverTimestamp(),
+                    message: `${username} left the game`,
+                  });
                 }}
               >
                 Leave Game
@@ -407,6 +428,11 @@ export function GameInterface() {
                     docRef("games", id, "players", username),
                     player
                   );
+                  await addDoc(collectionRef("games", id, "events"), {
+                    author: username,
+                    timestamp: serverTimestamp(),
+                    message: `${username} joined the game`,
+                  });
                 }}
               >
                 Join Game
@@ -464,6 +490,11 @@ export function GameInterface() {
                     isStarted: true,
                     map: map,
                     turnState: "choose",
+                  });
+                  await addDoc(collectionRef("games", id, "events"), {
+                    author: username,
+                    timestamp: serverTimestamp(),
+                    message: `${username} began the game`,
                   });
                 });
               }}
@@ -533,6 +564,11 @@ export function GameInterface() {
                         hand: [...currentPlayer.hand, card],
                       }
                     );
+                    await addDoc(collectionRef("games", id, "events"), {
+                      author: username,
+                      timestamp: serverTimestamp(),
+                      message: `${username} drew a card`,
+                    });
                   }
                 });
               }}
@@ -577,6 +613,11 @@ export function GameInterface() {
                       hand: [...currentPlayer.hand, newCard],
                     }
                   );
+                  await addDoc(collectionRef("games", id, "events"), {
+                    author: username,
+                    timestamp: serverTimestamp(),
+                    message: `${username} drew a card`,
+                  });
                 }
               });
             }}
@@ -622,6 +663,11 @@ export function GameInterface() {
                   "boardState.routes.deck": game.boardState.routes.deck,
                   "boardState.routes.discard": game.boardState.routes.discard,
                   turnState: "routes-taken",
+                });
+                await addDoc(collectionRef("games", id, "events"), {
+                  author: username,
+                  timestamp: serverTimestamp(),
+                  message: `${username} took 3 routes`,
                 });
               });
             }}
@@ -721,6 +767,11 @@ export function GameInterface() {
                             ...DEFAULT_MAP_SETTINGS,
                             ...mapSettings,
                           }),
+                        });
+                        await addDoc(collectionRef("games", id, "events"), {
+                          author: username,
+                          timestamp: serverTimestamp(),
+                          message: `${username} updated the map`,
                         });
                       });
                     }}
@@ -852,6 +903,11 @@ export function GameInterface() {
                               routes: routes,
                             }
                           );
+                          await addDoc(collectionRef("games", id, "events"), {
+                            author: username,
+                            timestamp: serverTimestamp(),
+                            message: `${username} claimed ${line.start} to ${line.end}`,
+                          });
                         });
                       }
                     }}
@@ -973,6 +1029,23 @@ export function GameInterface() {
           </Stack>
         </Flex>
       </>
+      <Stack
+        css={{
+          height: 40,
+          width: "100%",
+          textAlign: "center",
+          position: "fixed",
+          background: "white",
+          paddingTop: 8,
+          borderTop: "1px solid black",
+          overflow: "scroll",
+          bottom: 0,
+        }}
+      >
+        {events?.map((event) => (
+          <div>{event.message}</div>
+        ))}
+      </Stack>
     </Stack>
   );
 }
