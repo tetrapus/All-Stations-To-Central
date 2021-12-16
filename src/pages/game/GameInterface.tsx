@@ -71,7 +71,7 @@ export function GameInterface() {
     )
   ); // todo: loading
 
-  const [events, eventsLoading] = useCollectionData(
+  const [events] = useCollectionData(
     query(collectionRef("games", id, "events"), orderBy("timestamp", "desc"))
   ); // todo: loading
 
