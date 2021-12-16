@@ -52,7 +52,7 @@ export interface Bonus {
   criteria: (a: any, b: any) => number; // todo
 }
 
-export interface Map {
+export interface GameMap {
   id: "sydney" | "nordic" | "europe" | "america" | "generated";
   name: string;
   background: string;
@@ -129,7 +129,7 @@ export interface Game {
   created: Timestamp;
   isStarted: boolean;
   isReady: boolean;
-  map?: Map;
+  map?: GameMap;
   turn: number;
   turnState?: "choose" | "drawn" | "routes-taken" | "ferry-attempted";
   boardState: BoardState;

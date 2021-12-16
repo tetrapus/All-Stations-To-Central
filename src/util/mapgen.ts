@@ -1,8 +1,8 @@
 import { CELL_SIZE } from "data/Board";
 import {
   Destination,
+  GameMap,
   Line,
-  Map,
   Position,
   Route,
   trainColors,
@@ -115,8 +115,8 @@ function within(p: number, q: number, r: number) {
   return (p <= q && q <= r) || (r <= q && q <= p);
 }
 
-export function generateMap(mapSettings: MapSettings): Map {
-  const map: Map = {
+export function generateMap(mapSettings: MapSettings): GameMap {
+  const map: GameMap = {
     id: "generated",
     name: generateRegion(),
     background: "", // todo

@@ -1,15 +1,19 @@
 import { Flex } from "atoms/Flex";
 import { Stack } from "atoms/Stack";
-import { Destination, Route } from "data/Game";
+import { CELL_SIZE } from "data/Board";
+import { GameMap, Route } from "data/Game";
 import React from "react";
 import { sortBy } from "util/sort-by";
+import { indexBy } from "util/index-by";
 
 interface Props {
   count?: number;
   route?: Route;
   clickable?: boolean;
-  destinations: { [name: string]: Destination };
+  map: GameMap;
   onClick?: () => void;
+  onHighlight?: (route?: Route) => void;
+  onUnhighlight?: (route?: Route) => void;
 }
 
 export const RouteCard = ({
@@ -17,8 +21,12 @@ export const RouteCard = ({
   route,
   clickable,
   onClick,
-  destinations,
+  onHighlight,
+  onUnhighlight,
+  map,
 }: Props) => {
+  const destinations = indexBy(map.destinations, "name");
+  const mapSize = map.size;
   const ends = route
     ? sortBy([route.start, route.end], (name) => destinations[name].position.y)
     : undefined;
@@ -32,6 +40,12 @@ export const RouteCard = ({
         cursor: clickable ? "pointer" : undefined,
       }}
       onClick={onClick}
+      onMouseEnter={() => {
+        onHighlight?.(route);
+      }}
+      onMouseLeave={() => {
+        onUnhighlight?.(route);
+      }}
     >
       <Flex>{ends ? ends[1] : null}</Flex>
       <Flex
@@ -59,8 +73,16 @@ export const RouteCard = ({
                 height: 6,
                 borderRadius: 3,
                 position: "absolute",
-                left: `${(destinations[route.start].position.x / 16) * 80}%`,
-                top: `${(destinations[route.start].position.y / 9) * 80}%`,
+                left: `${
+                  ((destinations[route.start].position.x * CELL_SIZE) /
+                    mapSize.width) *
+                  100
+                }%`,
+                top: `${
+                  ((destinations[route.start].position.y * CELL_SIZE) /
+                    mapSize.height) *
+                  100
+                }%`,
               }}
             ></div>
             <div
@@ -70,8 +92,16 @@ export const RouteCard = ({
                 height: 6,
                 borderRadius: 3,
                 position: "absolute",
-                left: `${(destinations[route.end].position.x / 16) * 80}%`,
-                top: `${(destinations[route.end].position.y / 9) * 80}%`,
+                left: `${
+                  ((destinations[route.end].position.x * CELL_SIZE) /
+                    mapSize.width) *
+                  100
+                }%`,
+                top: `${
+                  ((destinations[route.end].position.y * CELL_SIZE) /
+                    mapSize.height) *
+                  100
+                }%`,
               }}
             ></div>
           </>

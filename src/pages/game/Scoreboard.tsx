@@ -1,18 +1,19 @@
 import { Flex } from "atoms/Flex";
 import { Stack } from "atoms/Stack";
-import { Destination, Player } from "data/Game";
+import { Player } from "data/Game";
 import React from "react";
 import { sortBy } from "../../util/sort-by";
 import { LineLengthIcon } from "./LineLengthIcon";
 import { PlayerColor } from "./PlayerColor";
 import { RouteCard } from "./RouteCard";
+import { GameMap } from "data/Game";
 
 interface Props {
   players: Player[];
-  destinations: { [name: string]: Destination };
+  map: GameMap;
 }
 
-export function Scoreboard({ players, destinations }: Props) {
+export function Scoreboard({ players, map }: Props) {
   const rankings = sortBy(
     players.filter((player) => player.scores),
     (p) => p.scores?.total || 0
@@ -72,8 +73,8 @@ export function Scoreboard({ players, destinations }: Props) {
                       {player.routes.map((route, idx) => (
                         <RouteCard
                           route={route}
-                          destinations={destinations}
                           count={player.scores?.routes[idx]}
+                          map={map}
                         ></RouteCard>
                       ))}
                     </Flex>

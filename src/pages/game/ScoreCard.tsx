@@ -1,11 +1,11 @@
 import { Flex } from "atoms/Flex";
 import { Stack } from "atoms/Stack";
-import { Map } from "data/Game";
+import { GameMap } from "data/Game";
 import React from "react";
 import { LineLengthIcon } from "./LineLengthIcon";
 
 interface Props {
-  map: Map;
+  map: GameMap;
 }
 
 export function ScoreCard({ map }: Props) {

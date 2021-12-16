@@ -13,6 +13,7 @@ import {
 } from "data/Game";
 import {
   deleteField,
+  doc,
   orderBy,
   query,
   serverTimestamp,
@@ -22,7 +23,7 @@ import useLocalStorage from "@rehooks/local-storage";
 import React, { useState } from "react";
 import { useParams } from "react-router";
 import { TextButton } from "atoms/TextButton";
-import { deleteDoc, runTransaction, setDoc } from "@firebase/firestore";
+import { runTransaction } from "@firebase/firestore";
 import { Player, TrainColor, trainColors } from "data/Game";
 import { db, docRef } from "init/firebase";
 import { distance } from "../../util/mapgen";
@@ -41,7 +42,6 @@ import { RouteCard } from "./RouteCard";
 import { generateMap } from "util/mapgen";
 import { CELL_SIZE } from "data/Board";
 import { TextInput } from "atoms/TextInput";
-import { addDoc } from "firebase/firestore";
 
 /**
  * TODO:
@@ -55,6 +55,10 @@ import { addDoc } from "firebase/firestore";
  * Rules Explainer
  * Rainbow Route Color Selection
  * Background Generation
+ *
+ * BUGS
+ * Can't leave in the middle of a game
+ * Should be able to easily find destinations
  **/
 
 export function GameInterface() {
@@ -78,6 +82,22 @@ export function GameInterface() {
   const [username] = useLocalStorage<string>("username");
 
   const [mapSettings, setMapSettings] = useState(DEFAULT_MAP_SETTINGS);
+
+  const [highlightedNodes, setHighlightedNodes] = useState<string[]>([]);
+  const onHighlight = (route?: Route) => {
+    if (!route) return;
+    setHighlightedNodes([...highlightedNodes, route.start, route.end]);
+  };
+
+  const onUnhighlight = (route?: Route) => {
+    if (!route) return;
+
+    setHighlightedNodes(
+      highlightedNodes.filter(
+        (node) => ![route.start, route.end].includes(node)
+      )
+    );
+  };
 
   const map = game?.map;
 
@@ -148,11 +168,6 @@ export function GameInterface() {
         (v) => v[1]
       )
     : [];
-
-  const destinations = Object.fromEntries(
-    map.destinations.map((city) => [city.name, city])
-  );
-
   const getMapGraph = () => {
     const graph = new UndirectedGraph();
     map.destinations.forEach((destination) => graph.addNode(destination.name));
@@ -240,7 +255,9 @@ export function GameInterface() {
               route={route}
               count={route.points}
               key={idx}
-              destinations={destinations}
+              map={map}
+              onHighlight={onHighlight}
+              onUnhighlight={onUnhighlight}
             />
           </div>
         ))}
@@ -251,6 +268,12 @@ export function GameInterface() {
               if (!me) {
                 return;
               }
+
+              // Lock players, events and games
+              transaction.get(docRef("games", id));
+              transaction.get(docRef("games", id, "players", me.name));
+              transaction.get(docRef("games", id, "events"));
+
               const graph = getMapGraph();
               const ownedLines = getOwnedLines(me);
 
@@ -290,7 +313,7 @@ export function GameInterface() {
                     (player) => player.name === me.name || player.isReady
                   ),
               });
-              await addDoc(collectionRef("games", id, "events"), {
+              await transaction.set(doc(collectionRef("games", id, "events")), {
                 author: username,
                 timestamp: serverTimestamp(),
                 message: `${username} chose their routes`,
@@ -401,11 +424,18 @@ export function GameInterface() {
             players.find((player) => player.name === username) ? (
               <TextButton
                 onClick={async (event) => {
-                  await deleteDoc(docRef("games", id, "players", username));
-                  await addDoc(collectionRef("games", id, "events"), {
-                    author: username,
-                    timestamp: serverTimestamp(),
-                    message: `${username} left the game`,
+                  await runTransaction(db, async (transaction) => {
+                    await transaction.delete(
+                      docRef("games", id, "players", username)
+                    );
+                    await transaction.set(
+                      doc(collectionRef("games", id, "events")),
+                      {
+                        author: username,
+                        timestamp: serverTimestamp(),
+                        message: `${username} left the game`,
+                      }
+                    );
                   });
                 }}
               >
@@ -414,24 +444,29 @@ export function GameInterface() {
             ) : (
               <TextButton
                 onClick={async (event) => {
-                  const player: Player = {
-                    name: username,
-                    order: players.length,
-                    hand: [],
-                    color: generateColor(), // todo
-                    routes: [],
-                    trainCount: 45,
-                    stationCount: 0,
-                    isReady: false,
-                  };
-                  await setDoc(
-                    docRef("games", id, "players", username),
-                    player
-                  );
-                  await addDoc(collectionRef("games", id, "events"), {
-                    author: username,
-                    timestamp: serverTimestamp(),
-                    message: `${username} joined the game`,
+                  await runTransaction(db, async (transaction) => {
+                    const player: Player = {
+                      name: username,
+                      order: players.length,
+                      hand: [],
+                      color: generateColor(), // todo
+                      routes: [],
+                      trainCount: 45,
+                      stationCount: 0,
+                      isReady: false,
+                    };
+                    await transaction.set(
+                      docRef("games", id, "players", username),
+                      player
+                    );
+                    await transaction.set(
+                      doc(collectionRef("games", id, "events")),
+                      {
+                        author: username,
+                        timestamp: serverTimestamp(),
+                        message: `${username} joined the game`,
+                      }
+                    );
                   });
                 }}
               >
@@ -491,11 +526,14 @@ export function GameInterface() {
                     map: map,
                     turnState: "choose",
                   });
-                  await addDoc(collectionRef("games", id, "events"), {
-                    author: username,
-                    timestamp: serverTimestamp(),
-                    message: `${username} began the game`,
-                  });
+                  await transaction.set(
+                    doc(collectionRef("games", id, "events")),
+                    {
+                      author: username,
+                      timestamp: serverTimestamp(),
+                      message: `${username} began the game`,
+                    }
+                  );
                 });
               }}
             >
@@ -506,7 +544,7 @@ export function GameInterface() {
         <ScoreCard map={map} />
       </Flex>
       {game.finalTurn && game.finalTurn < game.turn ? (
-        <Scoreboard players={players} destinations={destinations}></Scoreboard>
+        <Scoreboard players={players} map={map}></Scoreboard>
       ) : null}
       <>
         <Flex>
@@ -541,6 +579,12 @@ export function GameInterface() {
                     if (!game.boardState.carriages.deck.length) {
                       game.boardState.carriages.deck =
                         game.boardState.carriages.discard;
+                      if (!game.boardState.carriages.deck.length && game.map) {
+                        game.boardState.carriages.deck = fillRepeats(
+                          game?.map.deck,
+                          (color) => ({ color })
+                        );
+                      }
                       game.boardState.carriages.discard = [];
                     }
                     game.boardState.carriages.faceUp.splice(idx, 1, newCard);
@@ -564,11 +608,14 @@ export function GameInterface() {
                         hand: [...currentPlayer.hand, card],
                       }
                     );
-                    await addDoc(collectionRef("games", id, "events"), {
-                      author: username,
-                      timestamp: serverTimestamp(),
-                      message: `${username} drew a card`,
-                    });
+                    await transaction.set(
+                      doc(collectionRef("games", id, "events")),
+                      {
+                        author: username,
+                        timestamp: serverTimestamp(),
+                        message: `${username} drew a card`,
+                      }
+                    );
                   }
                 });
               }}
@@ -597,6 +644,12 @@ export function GameInterface() {
                   if (!game.boardState.carriages.deck.length) {
                     game.boardState.carriages.deck =
                       game.boardState.carriages.discard;
+                    if (!game.boardState.carriages.deck.length && game.map) {
+                      game.boardState.carriages.deck = fillRepeats(
+                        game?.map.deck,
+                        (color) => ({ color })
+                      );
+                    }
                     game.boardState.carriages.discard = [];
                   }
                   const newTurn = game.turnState === "drawn";
@@ -613,11 +666,14 @@ export function GameInterface() {
                       hand: [...currentPlayer.hand, newCard],
                     }
                   );
-                  await addDoc(collectionRef("games", id, "events"), {
-                    author: username,
-                    timestamp: serverTimestamp(),
-                    message: `${username} drew a card`,
-                  });
+                  await transaction.set(
+                    doc(collectionRef("games", id, "events")),
+                    {
+                      author: username,
+                      timestamp: serverTimestamp(),
+                      message: `${username} drew a card`,
+                    }
+                  );
                 }
               });
             }}
@@ -630,7 +686,9 @@ export function GameInterface() {
               game.isReady &&
               game.turnState === "choose"
             }
-            destinations={destinations}
+            map={map}
+            onHighlight={onHighlight}
+            onUnhighlight={onUnhighlight}
             onClick={() => {
               if (
                 !currentPlayer ||
@@ -664,14 +722,17 @@ export function GameInterface() {
                   "boardState.routes.discard": game.boardState.routes.discard,
                   turnState: "routes-taken",
                 });
-                await addDoc(collectionRef("games", id, "events"), {
-                  author: username,
-                  timestamp: serverTimestamp(),
-                  message: `${username} took 3 routes`,
-                });
+                await transaction.set(
+                  doc(collectionRef("games", id, "events")),
+                  {
+                    author: username,
+                    timestamp: serverTimestamp(),
+                    message: `${username} took 3 routes`,
+                  }
+                );
               });
             }}
-          ></RouteCard>
+          />
         </Flex>
         <Flex>
           <div
@@ -768,11 +829,14 @@ export function GameInterface() {
                             ...mapSettings,
                           }),
                         });
-                        await addDoc(collectionRef("games", id, "events"), {
-                          author: username,
-                          timestamp: serverTimestamp(),
-                          message: `${username} updated the map`,
-                        });
+                        await transaction.set(
+                          doc(collectionRef("games", id, "events")),
+                          {
+                            author: username,
+                            timestamp: serverTimestamp(),
+                            message: `${username} updated the map`,
+                          }
+                        );
                       });
                     }}
                   >
@@ -911,11 +975,14 @@ export function GameInterface() {
                               routes: routes,
                             }
                           );
-                          await addDoc(collectionRef("games", id, "events"), {
-                            author: username,
-                            timestamp: serverTimestamp(),
-                            message: `${username} claimed ${line.start} to ${line.end}`,
-                          });
+                          await transaction.set(
+                            doc(collectionRef("games", id, "events")),
+                            {
+                              author: username,
+                              timestamp: serverTimestamp(),
+                              message: `${username} claimed ${line.start} to ${line.end}`,
+                            }
+                          );
                         });
                       }
                     }}
@@ -985,7 +1052,9 @@ export function GameInterface() {
                     width: 22,
                     height: 22,
                     background:
-                      "radial-gradient(circle, rgba(255,233,0,1) 0%, rgba(255,79,0,1) 100%)",
+                      /*highlightedNodes.includes(destination.name)
+                      ? "radial-gradient(circle, green 0%, lightgreen 100%)"
+                      : */ "radial-gradient(circle, rgba(255,233,0,1) 0%, rgba(255,79,0,1) 100%)",
                     border: "1px solid #FFD700",
                     transform: "translateX(-50%)",
                   }}
@@ -1030,7 +1099,9 @@ export function GameInterface() {
               <RouteCard
                 route={route}
                 count={route.points}
-                destinations={destinations}
+                map={map}
+                onHighlight={onHighlight}
+                onUnhighlight={onUnhighlight}
                 key={idx}
               />
             ))}
