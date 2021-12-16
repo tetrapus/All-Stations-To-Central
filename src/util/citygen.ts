@@ -120,7 +120,7 @@ export function choose(frequencies: { [value: string]: number }) {
 
 export function generateRegion() {
   const parts = [choose(wordParts.consonants)];
-  while ((parts.length < 4 && Math.random() > 0.3) || parts.length < 3) {
+  while ((parts.length < 4 && Math.random() > 0.7) || parts.length < 3) {
     parts.push(choose(wordParts.vowels));
     parts.push(
       choose({ ...wordParts.jointConsonants, ...wordParts.consonants })

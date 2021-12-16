@@ -64,6 +64,10 @@ export interface Map {
   scoringTable: { [key: number]: number };
   players: { min: number; max: number };
   canMonopolizeLineMin: number;
+  size: {
+    height: number;
+    width: number;
+  };
 }
 
 type PlayerColor = string;
@@ -137,8 +141,8 @@ export const GameConverter: FirestoreDataConverter<Game> = {
 };
 
 export const DEFAULT_MAP_SETTINGS = {
-  cities: 40,
-  connectivity: 3,
+  cities: 60,
+  connectivity: 3.5,
   routes: 46,
   ferries: 0,
   tunnels: 0,
@@ -151,5 +155,11 @@ export const DEFAULT_MAP_SETTINGS = {
     4: 7,
     5: 10,
     6: 15,
+    7: 21,
+    9: 27,
+  },
+  size: {
+    height: 1200,
+    width: 1200,
   },
 };

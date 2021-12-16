@@ -1,3 +1,4 @@
+import { CELL_SIZE } from "data/Board";
 import {
   Destination,
   Line,
@@ -20,6 +21,7 @@ interface MapSettings {
   players: { min: number; max: number };
   canMonopolizeLineMin: number;
   scoringTable: { [key: number]: number };
+  size: { height: number; width: number };
 }
 
 export function distance(
@@ -113,8 +115,6 @@ function within(p: number, q: number, r: number) {
   return (p <= q && q <= r) || (r <= q && q <= p);
 }
 
-const granularity = 2;
-
 export function generateMap(mapSettings: MapSettings): Map {
   const map: Map = {
     id: "generated",
@@ -138,14 +138,32 @@ export function generateMap(mapSettings: MapSettings): Map {
     scoringTable: mapSettings.scoringTable,
     players: mapSettings.players, // todo: balance
     canMonopolizeLineMin: mapSettings.canMonopolizeLineMin, // todo: balance
+    size: mapSettings.size,
   };
 
+  const margins = {
+    left: 1,
+    right: 2,
+
+    top: 1,
+    bottom: 1,
+  };
+  const tracks = {
+    x:
+      Math.floor(mapSettings.size.width / CELL_SIZE) -
+      margins.left -
+      margins.right,
+    y:
+      Math.floor(mapSettings.size.height / CELL_SIZE) -
+      margins.top -
+      margins.bottom,
+  };
   while (map.destinations.length < mapSettings.cities) {
     const candidate = {
       name: generateCity(),
       position: {
-        x: Math.round(14 * Math.random() * granularity) / granularity + 0.5,
-        y: Math.round(8 * Math.random() * granularity) / granularity + 0.5,
+        x: Math.round(tracks.x * Math.random()) + margins.left,
+        y: Math.round(tracks.y * Math.random()) + margins.top,
       },
     };
     if (map.destinations.some((city) => distance(city, candidate) <= 0.8)) {
@@ -258,6 +276,13 @@ export function generateMap(mapSettings: MapSettings): Map {
   // Any destinations missing a line? Get rid of them.
   map.destinations = map.destinations.filter((city) =>
     map.lines.find((line) => line.start === city.name || line.end === city.name)
+  );
+
+  // Same for the scorecard!
+  map.scoringTable = Object.fromEntries(
+    Object.entries(map.scoringTable).filter(([length]) =>
+      map.lines.some((line) => line.length === Number(length))
+    )
   );
 
   // Build a graph

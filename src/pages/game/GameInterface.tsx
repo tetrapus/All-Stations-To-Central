@@ -33,11 +33,12 @@ import { PlayerColor } from "./PlayerColor";
 import { ScoreCard } from "./ScoreCard";
 import { RouteCard } from "./RouteCard";
 import { generateMap } from "util/mapgen";
+import { CELL_SIZE } from "data/Board";
+import { TextInput } from "atoms/TextInput";
 
 /**
  * TODO:
  *
- * Map Sizing Customization
  * Ferries
  * Tunnels
  * Event feed
@@ -65,15 +66,13 @@ export function GameInterface() {
 
   const [username] = useLocalStorage<string>("username");
 
+  const [mapSettings, setMapSettings] = useState(DEFAULT_MAP_SETTINGS);
+
   const map = game?.map;
 
   if (!username || !players || !map) {
     return null;
   }
-
-  const ratio = [16, 9];
-  const width = 90;
-  const height = (width * ratio[1]) / ratio[0];
 
   const Card = ({
     color,
@@ -414,19 +413,7 @@ export function GameInterface() {
               </TextButton>
             )
           ) : null}
-          {!game.isStarted ? (
-            <TextButton
-              onClick={() => {
-                runTransaction(db, async (transaction) => {
-                  transaction.update(docRef("games", id), {
-                    map: generateMap(DEFAULT_MAP_SETTINGS),
-                  });
-                });
-              }}
-            >
-              Randomize Map
-            </TextButton>
-          ) : null}
+
           {game.isReady && game.finalTurn && game.turn <= game.finalTurn ? (
             <strong css={{ margin: 8 }}>
               {game.finalTurn === game.turn
@@ -643,8 +630,8 @@ export function GameInterface() {
         <Flex>
           <div
             css={{
-              width: `${width}vw`,
-              height: `${height}vw`,
+              width: map.size.width,
+              height: map.size.height,
               background: currentPlayer?.name === username ? "black" : "#333",
               backgroundSize: "cover",
               border: "5px solid black",
@@ -652,9 +639,97 @@ export function GameInterface() {
               position: "relative",
             }}
           >
-            <span css={{ color: "white", fontWeight: "bold", fontSize: 24 }}>
-              {map?.name}
-            </span>
+            <Flex>
+              <span
+                css={{
+                  color: "white",
+                  fontWeight: "bold",
+                  fontSize: 24,
+                  marginRight: "auto",
+                }}
+              >
+                {map?.name}
+              </span>
+              {!game.isStarted ? (
+                <Flex>
+                  <TextInput
+                    placeholder="Cities"
+                    value={mapSettings.cities}
+                    onChange={(e) => {
+                      setMapSettings({
+                        ...mapSettings,
+                        cities: Number(e.currentTarget.value),
+                      });
+                    }}
+                    css={{ width: 80 }}
+                  />
+                  <TextInput
+                    placeholder="Connectivity"
+                    value={mapSettings.connectivity}
+                    onChange={(e) => {
+                      setMapSettings({
+                        ...mapSettings,
+                        connectivity: Number(e.currentTarget.value),
+                      });
+                    }}
+                    css={{ width: 80 }}
+                  />
+                  <TextInput
+                    placeholder="Routes (46)"
+                    css={{ width: 80 }}
+                    value={mapSettings.routes}
+                    onChange={(e) => {
+                      setMapSettings({
+                        ...mapSettings,
+                        routes: Number(e.currentTarget.value),
+                      });
+                    }}
+                  />
+                  <TextInput
+                    placeholder="Width (1200)"
+                    css={{ width: 80 }}
+                    value={mapSettings.size.width}
+                    onChange={(e) => {
+                      setMapSettings({
+                        ...mapSettings,
+                        size: {
+                          width: Number(e.currentTarget.value),
+                          height: mapSettings.size.height,
+                        },
+                      });
+                    }}
+                  />
+                  <TextInput
+                    placeholder="Height (1200)"
+                    css={{ width: 80 }}
+                    value={mapSettings.size.height}
+                    onChange={(e) => {
+                      setMapSettings({
+                        ...mapSettings,
+                        size: {
+                          height: Number(e.currentTarget.value),
+                          width: mapSettings.size.width,
+                        },
+                      });
+                    }}
+                  />
+                  <TextButton
+                    onClick={() => {
+                      runTransaction(db, async (transaction) => {
+                        transaction.update(docRef("games", id), {
+                          map: generateMap({
+                            ...DEFAULT_MAP_SETTINGS,
+                            ...mapSettings,
+                          }),
+                        });
+                      });
+                    }}
+                  >
+                    Randomize Map
+                  </TextButton>
+                </Flex>
+              ) : null}
+            </Flex>
             {map?.lines.map((line, lineNo) =>
               line.color.map((color, colorIdx) => {
                 const start = map.destinations.find(
@@ -682,9 +757,9 @@ export function GameInterface() {
                 return (
                   <Flex
                     css={{
-                      left: `${(start.position.x * width) / ratio[0]}vw`,
+                      left: CELL_SIZE * start.position.x,
                       position: "absolute",
-                      top: `${(start.position.y * height) / ratio[1]}vw`,
+                      top: CELL_SIZE * start.position.y,
                       transform: `rotate(${
                         Math.atan2(
                           end.position.y - start.position.y,
@@ -696,7 +771,7 @@ export function GameInterface() {
                       }px)`,
                       transformOrigin: "top left",
                       height: 4,
-                      width: `${distance(start, end) * 5.6}vw`,
+                      width: distance(start, end) * CELL_SIZE,
                       "--hovercolor": "rgba(0,0,0,0.2)",
                       ":hover": {
                         "--hovercolor": playable
@@ -833,9 +908,9 @@ export function GameInterface() {
             {map?.destinations.map((destination) => (
               <Flex
                 css={{
-                  left: `${(destination.position.x * width) / ratio[0]}vw`,
+                  left: CELL_SIZE * destination.position.x,
                   position: "absolute",
-                  top: `${(destination.position.y * height) / ratio[1]}vw`,
+                  top: CELL_SIZE * destination.position.y,
                   color: "white",
                   transform: "translateY(-50%)",
                 }}
