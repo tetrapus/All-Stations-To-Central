@@ -841,10 +841,17 @@ export function GameInterface() {
                                   (e) => e[1]
                                 )[0][0] || line.color[colorIdx]
                               : line.color[colorIdx];
-                          const discard = fillRepeats(
-                            { [useColor]: line.length },
-                            (color) => ({ color: useColor })
+                          console.log(line);
+                          const coreUsed = Math.min(
+                            line.length,
+                            counts[useColor]
                           );
+                          const rainbowsUsed = line.length - coreUsed;
+                          const discard = [
+                            ...Array(coreUsed).fill({ color: useColor }),
+                            ...Array(coreUsed).fill({ color: useColor }),
+                          ];
+
                           await transaction.update(docRef("games", id), {
                             [`boardState.lines.${lineNo}.${colorIdx}`]:
                               currentPlayer.name,
@@ -879,6 +886,11 @@ export function GameInterface() {
                                 route.end
                               ),
                           }));
+                          console.log({
+                            ...counts,
+                            [useColor]: (counts[useColor] || 0) - coreUsed,
+                            rainbow: (counts["rainbow"] || 0) - rainbowsUsed,
+                          });
                           await transaction.update(
                             docRef("games", id, "players", currentPlayer.name),
                             {
@@ -887,16 +899,12 @@ export function GameInterface() {
                               hand: fillRepeats(
                                 {
                                   ...counts,
-                                  [color]: Math.max(
-                                    (counts[color] || 0) - line.length,
+                                  [useColor]: Math.max(
+                                    (counts[useColor] || 0) - coreUsed,
                                     0
                                   ),
                                   rainbow:
-                                    (counts.rainbow || 0) +
-                                    Math.min(
-                                      (counts[color] || 0) - line.length,
-                                      0
-                                    ),
+                                    (counts["rainbow"] || 0) - rainbowsUsed,
                                 },
                                 (color) => ({ color })
                               ),
