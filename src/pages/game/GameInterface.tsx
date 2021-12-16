@@ -416,7 +416,7 @@ export function GameInterface() {
                 onClick={async (event) => {
                   const player: Player = {
                     name: username,
-                    order: 1,
+                    order: players.length,
                     hand: [],
                     color: generateColor(), // todo
                     routes: [],
@@ -835,12 +835,12 @@ export function GameInterface() {
                       if (playable && game.isReady) {
                         runTransaction(db, async (transaction) => {
                           const useColor =
-                            line.color[0] === "rainbow"
+                            line.color[colorIdx] === "rainbow"
                               ? sortBy(
                                   Object.entries(counts),
                                   (e) => e[1]
-                                )[0][0] || line.color[0]
-                              : line.color[0];
+                                )[0][0] || line.color[colorIdx]
+                              : line.color[colorIdx];
                           const discard = fillRepeats(
                             { [useColor]: line.length },
                             (color) => ({ color: useColor })
