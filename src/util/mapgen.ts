@@ -9,6 +9,7 @@ import {
 } from "data/Game";
 import { UndirectedGraph } from "graphology";
 import dijkstra from "graphology-shortest-path/dijkstra";
+import overlap from "polygon-overlap";
 import { choose, generateCity, generateRegion } from "./citygen";
 import { sortBy } from "./sort-by";
 
@@ -34,50 +35,24 @@ export function distance(
   );
 }
 
+function lerp(min: number, max: number, t: number): number {
+  return min * (1 - t) + max * t;
+}
+
+function sublerp(A: Position, B: Position) {
+  return {
+    A: {
+      x: lerp(A.x, B.x, 0.1),
+      y: lerp(A.y, B.y, 0.1),
+    },
+    B: {
+      x: lerp(A.x, B.x, 0.9),
+      y: lerp(A.y, B.y, 0.9),
+    },
+  };
+}
+
 export function intersect({
-  A: p0,
-  B: p1,
-  C: p2,
-  D: p3,
-}: {
-  A: Position;
-  B: Position;
-  C: Position;
-  D: Position;
-}) {
-  const s1_x = p1.x - p0.x;
-  const s1_y = p1.y - p0.y;
-  const s2_x = p3.x - p2.x;
-  const s2_y = p3.y - p2.y;
-
-  const s =
-    (-s1_y * (p0.x - p2.x) + s1_x * (p0.y - p2.y)) /
-    (-s2_x * s1_y + s1_x * s2_y);
-  const t =
-    (s2_x * (p0.y - p2.y) - s2_y * (p0.x - p2.x)) /
-    (-s2_x * s1_y + s1_x * s2_y);
-
-  if (s > 0 && s < 1 && t > 0 && t < 1) {
-    return { x: p0.x + t * s1_x, y: p0.y + t * s1_y };
-  }
-  if (
-    collinear({
-      A: p0,
-      B: p1,
-      C: p2,
-      D: p3,
-    })
-  ) {
-    return true;
-  }
-  return null;
-}
-
-function pointsEqual(A: Position, B: Position) {
-  return A.x === B.x && A.y === B.y;
-}
-
-export function collinear({
   A,
   B,
   C,
@@ -88,31 +63,29 @@ export function collinear({
   C: Position;
   D: Position;
 }) {
-  //var det;
-  //det = (B.x - A.x) * (D.y - C.y) - (D.x - C.x) * (B.y - A.y);
-  // FIXME
-  return (
-    (isOnLine(A, B, C) && !pointsEqual(A, C) && !pointsEqual(B, C)) ||
-    (isOnLine(A, B, D) && !pointsEqual(A, D) && !pointsEqual(B, D))
+  const {
+    A: { x: a, y: b },
+    B: { x: c, y: d },
+  } = sublerp(A, B);
+  const {
+    A: { x: p, y: q },
+    B: { x: r, y: s },
+  } = sublerp(C, D);
+  const e = 0.05;
+  return overlap(
+    [
+      [a + e, b + e],
+      [a - e, b - e],
+      [c - e, d - e],
+      [c + e, d + e],
+    ],
+    [
+      [p + e, q + e],
+      [p - e, q - e],
+      [r - e, s - e],
+      [r + e, s + e],
+    ]
   );
-}
-
-function isOnLine(a: Position, b: Position, c: Position) {
-  // Return true iff point c intersects the line segment from a to b.
-  return (
-    collinearPoints(a, b, c) &&
-    (a.x !== b.x ? within(a.x, c.x, b.x) : within(a.y, c.y, b.y))
-  );
-}
-
-function collinearPoints(a: Position, b: Position, c: Position) {
-  // Return true iff a, b, and c all lie on the same line.
-  return (b.x - a.x) * (c.y - a.y) === (c.x - a.x) * (b.y - a.y);
-}
-
-function within(p: number, q: number, r: number) {
-  // Return true iff q is between p and r (inclusive).
-  return (p <= q && q <= r) || (r <= q && q <= p);
 }
 
 export function generateMap(mapSettings: MapSettings): GameMap {
@@ -146,7 +119,7 @@ export function generateMap(mapSettings: MapSettings): GameMap {
     right: 2,
 
     top: 1,
-    bottom: 1,
+    bottom: 2,
   };
   const tracks = {
     x:
@@ -166,6 +139,9 @@ export function generateMap(mapSettings: MapSettings): GameMap {
         y: Math.round(tracks.y * Math.random()) + margins.top,
       },
     };
+    if (candidate.position.x % 2 === 0) {
+      candidate.position.y += 0.5;
+    }
     if (map.destinations.some((city) => distance(city, candidate) <= 0.8)) {
       continue;
     }

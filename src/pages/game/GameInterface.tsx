@@ -8,6 +8,7 @@ import dijkstra from "graphology-shortest-path/dijkstra";
 import { collectionRef } from "init/firebase";
 import {
   DEFAULT_MAP_SETTINGS,
+  Game,
   GameConverter,
   PlayerConverter,
 } from "data/Game";
@@ -105,6 +106,18 @@ export function GameInterface() {
     return null;
   }
 
+  const getLatestData = async (transaction: Transaction) => {
+    const game = (
+      await transaction.get(docRef("games", id).withConverter(GameConverter))
+    ).data();
+    const me = (
+      await transaction.get(
+        docRef("games", id, "players", username).withConverter(PlayerConverter)
+      )
+    ).data();
+    return { game, me };
+  };
+
   const Card = ({
     color,
     count,
@@ -155,19 +168,24 @@ export function GameInterface() {
     game.finalTurn && game.turn > game.finalTurn
       ? undefined
       : players[game.turn % players.length];
+  const isCurrentPlayer = (game: Game, player: Player) =>
+    !game.isReady || (game.finalTurn && game.turn > game.finalTurn)
+      ? false
+      : game.turn % players.length === player.order;
 
   // Hand component
-  const cardCounts: [TrainColor, number][] = me
-    ? sortBy(
-        Object.keys(trainColors)
-          ?.map((color): [string, number] => [
-            color,
-            me.hand.filter((card) => card.color === color).length,
-          ])
-          .filter(([, count]) => count),
-        (v) => v[1]
-      )
-    : [];
+  const getCardCounts = (me: Player): [TrainColor, number][] =>
+    me
+      ? sortBy(
+          Object.keys(trainColors)
+            ?.map((color): [string, number] => [
+              color,
+              me.hand.filter((card) => card.color === color).length,
+            ])
+            .filter(([, count]) => count),
+          (v) => v[1]
+        )
+      : [];
   const getMapGraph = () => {
     const graph = new UndirectedGraph();
     map.destinations.forEach((destination) => graph.addNode(destination.name));
@@ -265,14 +283,10 @@ export function GameInterface() {
           css={{ fontSize: 14 }}
           onClick={() => {
             runTransaction(db, async (transaction) => {
-              if (!me) {
+              const { game, me } = await getLatestData(transaction);
+              if (!game || !me) {
                 return;
               }
-
-              // Lock players, events and games
-              transaction.get(docRef("games", id));
-              transaction.get(docRef("games", id, "players", me.name));
-              transaction.get(docRef("games", id, "events"));
 
               const graph = getMapGraph();
               const ownedLines = getOwnedLines(me);
@@ -425,8 +439,12 @@ export function GameInterface() {
               <TextButton
                 onClick={async (event) => {
                   await runTransaction(db, async (transaction) => {
+                    const { me } = await getLatestData(transaction);
+                    if (!game || !me) {
+                      return;
+                    }
                     await transaction.delete(
-                      docRef("games", id, "players", username)
+                      docRef("games", id, "players", me.name)
                     );
                     await transaction.set(
                       doc(collectionRef("games", id, "events")),
@@ -445,11 +463,15 @@ export function GameInterface() {
               <TextButton
                 onClick={async (event) => {
                   await runTransaction(db, async (transaction) => {
+                    const { game, me } = await getLatestData(transaction);
+                    if (!me || !game) {
+                      return;
+                    }
                     const player: Player = {
                       name: username,
                       order: players.length,
                       hand: [],
-                      color: generateColor(), // todo
+                      color: generateColor(),
                       routes: [],
                       trainCount: 45,
                       stationCount: 0,
@@ -486,6 +508,11 @@ export function GameInterface() {
             <TextButton
               onClick={async () => {
                 await runTransaction(db, async (transaction) => {
+                  const { game, me } = await getLatestData(transaction);
+                  const map = game?.map;
+                  if (!game || !map || !me) {
+                    return;
+                  }
                   const carriages = arrayShuffle(
                     fillRepeats(map.deck, (color) => ({ color }))
                   );
@@ -549,9 +576,11 @@ export function GameInterface() {
       <>
         <Flex>
           <Flex css={{ marginRight: "auto" }}>
-            {cardCounts?.map(([card, count], idx) => (
-              <Card key={idx} color={card} count={count}></Card>
-            ))}
+            {me
+              ? getCardCounts(me)?.map(([card, count], idx) => (
+                  <Card key={idx} color={card} count={count}></Card>
+                ))
+              : null}
           </Flex>
           {game.boardState.carriages.faceUp?.map((card, idx) => (
             <Card
@@ -565,12 +594,13 @@ export function GameInterface() {
               }
               onClick={() => {
                 runTransaction(db, async (transaction) => {
+                  const { game, me } = await getLatestData(transaction);
                   if (
-                    (game.turnState === "choose" ||
-                      game.turnState === "drawn") &&
-                    game.isReady &&
-                    currentPlayer &&
-                    currentPlayer.name === username
+                    game &&
+                    me &&
+                    isCurrentPlayer(game, me) &&
+                    (game?.turnState === "choose" ||
+                      game?.turnState === "drawn")
                   ) {
                     const newCard = game.boardState.carriages.deck.pop();
                     if (!newCard) {
@@ -603,9 +633,9 @@ export function GameInterface() {
                       turnState: newTurn ? "choose" : "drawn",
                     });
                     transaction.update(
-                      docRef("games", id, "players", currentPlayer.name),
+                      docRef("games", id, "players", me.name),
                       {
-                        hand: [...currentPlayer.hand, card],
+                        hand: [...me.hand, card],
                       }
                     );
                     await transaction.set(
@@ -631,11 +661,12 @@ export function GameInterface() {
             }
             onClick={() => {
               runTransaction(db, async (transaction) => {
+                const { game, me } = await getLatestData(transaction);
                 if (
-                  (game.turnState === "choose" || game.turnState === "drawn") &&
-                  game.isReady &&
-                  currentPlayer &&
-                  currentPlayer.name === username
+                  game &&
+                  me &&
+                  isCurrentPlayer(game, me) &&
+                  (game.turnState === "choose" || game.turnState === "drawn")
                 ) {
                   const newCard = game.boardState.carriages.deck.pop();
                   if (!newCard) {
@@ -660,12 +691,9 @@ export function GameInterface() {
                     turn: newTurn ? nextTurn(transaction) : game.turn,
                     turnState: newTurn ? "choose" : "drawn",
                   });
-                  transaction.update(
-                    docRef("games", id, "players", currentPlayer.name),
-                    {
-                      hand: [...currentPlayer.hand, newCard],
-                    }
-                  );
+                  transaction.update(docRef("games", id, "players", me.name), {
+                    hand: [...me.hand, newCard],
+                  });
                   await transaction.set(
                     doc(collectionRef("games", id, "events")),
                     {
@@ -690,46 +718,47 @@ export function GameInterface() {
             onHighlight={onHighlight}
             onUnhighlight={onUnhighlight}
             onClick={() => {
-              if (
-                !currentPlayer ||
-                currentPlayer.name !== username ||
-                !game.isReady ||
-                game.turnState !== "choose"
-              ) {
-                return;
-              }
               runTransaction(db, async (transaction) => {
-                if (game.boardState.routes.deck.length <= 3) {
-                  game.boardState.routes.deck = [
-                    ...game.boardState.routes.deck,
-                    ...arrayShuffle(game.boardState.routes.discard),
-                  ];
-                  game.boardState.routes.discard = [];
+                const { game, me } = await getLatestData(transaction);
+
+                if (
+                  game &&
+                  me &&
+                  isCurrentPlayer(game, me) &&
+                  game.turnState !== "choose"
+                ) {
+                  if (game.boardState.routes.deck.length <= 3) {
+                    game.boardState.routes.deck = [
+                      ...game.boardState.routes.deck,
+                      ...arrayShuffle(game.boardState.routes.discard),
+                    ];
+                    game.boardState.routes.discard = [];
+                  }
+                  await transaction.update(
+                    docRef("games", id, "players", me.name),
+                    {
+                      "routeChoices.routes": [
+                        game.boardState.routes.deck.pop(),
+                        game.boardState.routes.deck.pop(),
+                        game.boardState.routes.deck.pop(),
+                      ],
+                      "routeChoices.keepMin": 1,
+                    }
+                  );
+                  await transaction.update(docRef("games", id), {
+                    "boardState.routes.deck": game.boardState.routes.deck,
+                    "boardState.routes.discard": game.boardState.routes.discard,
+                    turnState: "routes-taken",
+                  });
+                  await transaction.set(
+                    doc(collectionRef("games", id, "events")),
+                    {
+                      author: username,
+                      timestamp: serverTimestamp(),
+                      message: `${username} took 3 routes`,
+                    }
+                  );
                 }
-                await transaction.update(
-                  docRef("games", id, "players", currentPlayer.name),
-                  {
-                    "routeChoices.routes": [
-                      game.boardState.routes.deck.pop(),
-                      game.boardState.routes.deck.pop(),
-                      game.boardState.routes.deck.pop(),
-                    ],
-                    "routeChoices.keepMin": 1,
-                  }
-                );
-                await transaction.update(docRef("games", id), {
-                  "boardState.routes.deck": game.boardState.routes.deck,
-                  "boardState.routes.discard": game.boardState.routes.discard,
-                  turnState: "routes-taken",
-                });
-                await transaction.set(
-                  doc(collectionRef("games", id, "events")),
-                  {
-                    author: username,
-                    timestamp: serverTimestamp(),
-                    message: `${username} took 3 routes`,
-                  }
-                );
               });
             }}
           />
@@ -854,21 +883,21 @@ export function GameInterface() {
                   (destination) => line.end === destination.name
                 );
                 if (!start || !end) return null;
-                const counts = Object.fromEntries(cardCounts);
                 const owner = game.boardState.lines[lineNo]?.[0];
-                const playable =
-                  game.turnState === "choose" &&
-                  game.isReady &&
-                  game.isStarted &&
-                  currentPlayer &&
-                  currentPlayer.name === username &&
-                  !owner &&
-                  line.length <= currentPlayer.trainCount &&
-                  (color === "rainbow"
-                    ? Math.max(...Object.values({ ...counts, rainbow: 0 }))
-                    : counts[color] || 0) +
-                    (counts["rainbow"] || 0) >=
-                    line.length;
+                const playable = (game: Game, me: Player) => {
+                  const counts = Object.fromEntries(getCardCounts(me));
+                  return (
+                    game.turnState === "choose" &&
+                    isCurrentPlayer(game, me) &&
+                    !owner &&
+                    line.length <= me.trainCount &&
+                    (color === "rainbow"
+                      ? Math.max(...Object.values({ ...counts, rainbow: 0 }))
+                      : counts[color] || 0) +
+                      (counts["rainbow"] || 0) >=
+                      line.length
+                  );
+                };
                 return (
                   <Flex
                     css={{
@@ -889,15 +918,17 @@ export function GameInterface() {
                       width: distance(start, end) * CELL_SIZE,
                       "--hovercolor": "rgba(0,0,0,0.2)",
                       ":hover": {
-                        "--hovercolor": playable
-                          ? currentPlayer.color
-                          : undefined,
-                        cursor: playable ? "pointer" : undefined,
+                        "--hovercolor":
+                          me && playable(game, me) ? me.color : undefined,
+                        cursor:
+                          me && playable(game, me) ? "pointer" : undefined,
                       },
                     }}
                     onClick={() => {
-                      if (playable && game.isReady) {
-                        runTransaction(db, async (transaction) => {
+                      runTransaction(db, async (transaction) => {
+                        const { game, me } = await getLatestData(transaction);
+                        if (game && me && playable(game, me) && game.isReady) {
+                          const counts = Object.fromEntries(getCardCounts(me));
                           const useColor =
                             line.color[colorIdx] === "rainbow"
                               ? sortBy(
@@ -905,7 +936,6 @@ export function GameInterface() {
                                   (e) => e[1]
                                 )[0][0] || line.color[colorIdx]
                               : line.color[colorIdx];
-                          console.log(line);
                           const coreUsed = Math.min(
                             line.length,
                             counts[useColor]
@@ -913,12 +943,11 @@ export function GameInterface() {
                           const rainbowsUsed = line.length - coreUsed;
                           const discard = [
                             ...Array(coreUsed).fill({ color: useColor }),
-                            ...Array(coreUsed).fill({ color: useColor }),
+                            ...Array(rainbowsUsed).fill({ color: "rainbow" }),
                           ];
 
                           await transaction.update(docRef("games", id), {
-                            [`boardState.lines.${lineNo}.${colorIdx}`]:
-                              currentPlayer.name,
+                            [`boardState.lines.${lineNo}.${colorIdx}`]: me.name,
                             "boardState.carriages.discard": [
                               ...game.boardState.carriages.discard,
                               ...discard,
@@ -926,7 +955,7 @@ export function GameInterface() {
                             turn: nextTurn(transaction),
                             turnState: "choose",
                           });
-                          if (currentPlayer.trainCount - line.length <= 0) {
+                          if (me.trainCount - line.length <= 0) {
                             // Final turn triggered!!!
                             await transaction.update(docRef("games", id), {
                               finalTurn: game.turn + players.length - 1,
@@ -934,13 +963,13 @@ export function GameInterface() {
                           }
                           // Update any won routes
                           const graph = getMapGraph();
-                          const ownedLines = getOwnedLines(currentPlayer);
+                          const ownedLines = getOwnedLines(me);
                           graph.addEdge(line.start, line.end);
 
                           ownedLines.forEach((line) =>
                             graph.addEdge(line.start, line.end)
                           );
-                          const routes = currentPlayer.routes.map((route) => ({
+                          const routes = me.routes.map((route) => ({
                             ...route,
                             won:
                               route.won ||
@@ -950,23 +979,15 @@ export function GameInterface() {
                                 route.end
                               ),
                           }));
-                          console.log({
-                            ...counts,
-                            [useColor]: (counts[useColor] || 0) - coreUsed,
-                            rainbow: (counts["rainbow"] || 0) - rainbowsUsed,
-                          });
                           await transaction.update(
-                            docRef("games", id, "players", currentPlayer.name),
+                            docRef("games", id, "players", me.name),
                             {
-                              trainCount:
-                                currentPlayer.trainCount - line.length,
+                              trainCount: me.trainCount - line.length,
                               hand: fillRepeats(
                                 {
                                   ...counts,
-                                  [useColor]: Math.max(
+                                  [useColor]:
                                     (counts[useColor] || 0) - coreUsed,
-                                    0
-                                  ),
                                   rainbow:
                                     (counts["rainbow"] || 0) - rainbowsUsed,
                                 },
@@ -983,8 +1004,8 @@ export function GameInterface() {
                               message: `${username} claimed ${line.start} to ${line.end}`,
                             }
                           );
-                        });
-                      }
+                        }
+                      });
                     }}
                   >
                     <Flex
