@@ -1,7 +1,15 @@
 import styled from "@emotion/styled";
 import { Flex } from "atoms/Flex";
 import { CELL_SIZE } from "data/Board";
-import { Line, Destination, Game, Player, trainColors } from "data/Game";
+import {
+  Line,
+  Destination,
+  Game,
+  Player,
+  trainColors,
+  tunnelColors,
+  ferryInsignia,
+} from "data/Game";
 import { doc, serverTimestamp } from "firebase/firestore";
 import { dijkstra } from "graphology-shortest-path";
 import { docRef, collectionRef } from "init/firebase";
@@ -23,7 +31,6 @@ const Locomotive = styled(Flex)<{
 }>(
   {
     borderWidth: 2,
-    borderStyle: "solid",
     margin: "0px 4px 0px 4px",
     flexGrow: 1,
     height: 10,
@@ -34,7 +41,13 @@ const Locomotive = styled(Flex)<{
     borderColor: color,
     borderImage: color,
     borderImageSlice: 1,
+    borderStyle: line.isTunnel ? "dashed" : "solid",
+    borderRadius: line.isTunnel || line.ferries ? 4 : 0,
     background: ownerColor,
+    backgroundImage: line.ferries > idx ? ferryInsignia : undefined,
+    backgroundRepeat: "no-repeat",
+    backgroundSize: "contain",
+    backgroundPosition: "center",
     transform: `translateY(${
       (10 * line.length) / 2 -
       Math.abs((idx + 0.5 - Math.ceil(line.length / 2)) / line.length) *
@@ -212,7 +225,7 @@ export function TrainLine({
         {new Array(line.length).fill(0).map((_, idx) => (
           <Locomotive
             key={idx}
-            color={trainColors[color]}
+            color={line.isTunnel ? tunnelColors[color] : trainColors[color]}
             ownerColor={
               game.boardState.lines[lineNo]?.[colorIdx]
                 ? playerColors[game.boardState.lines[lineNo]?.[colorIdx]]

@@ -11,6 +11,7 @@ import { UndirectedGraph } from "graphology";
 import dijkstra from "graphology-shortest-path/dijkstra";
 import overlap from "polygon-overlap";
 import { choose, generateCity, generateRegion } from "./citygen";
+import { indexBy } from "./index-by";
 import { sortBy } from "./sort-by";
 
 interface MapSettings {
@@ -121,15 +122,13 @@ export function generateMap(mapSettings: MapSettings): GameMap {
     top: 1,
     bottom: 2,
   };
+  const mapCells = {
+    x: Math.floor(mapSettings.size.width / CELL_SIZE),
+    y: Math.floor(mapSettings.size.height / CELL_SIZE),
+  };
   const tracks = {
-    x:
-      Math.floor(mapSettings.size.width / CELL_SIZE) -
-      margins.left -
-      margins.right,
-    y:
-      Math.floor(mapSettings.size.height / CELL_SIZE) -
-      margins.top -
-      margins.bottom,
+    x: mapCells.x - margins.left - margins.right,
+    y: mapCells.y - margins.top - margins.bottom,
   };
   while (map.destinations.length < mapSettings.cities) {
     const candidate = {
@@ -161,9 +160,8 @@ export function generateMap(mapSettings: MapSettings): GameMap {
   possiblePaths = sortBy(possiblePaths, (path) => path.distance);
   const possibleRoutes = [...possiblePaths];
 
-  const destinations = Object.fromEntries(
-    map.destinations.map((destination) => [destination.name, destination])
-  );
+  const destinations = indexBy(map.destinations, "name");
+
   // lay shortest path that does not overlap with existing path until we reach connectivity
   while (possiblePaths.length) {
     const candidate = possiblePaths.pop();
@@ -207,7 +205,7 @@ export function generateMap(mapSettings: MapSettings): GameMap {
         choose(Object.fromEntries(Object.keys(trainColors).map((e) => [e, 1]))),
       ],
       isTunnel: false, // todo
-      isFerry: false, // todo
+      ferries: 0, // todo
     });
   }
   const lineCount = Object.fromEntries(
@@ -261,13 +259,55 @@ export function generateMap(mapSettings: MapSettings): GameMap {
     )
   );
 
+  // Make some ferries and tunnels!
+  const water = {
+    A: { x: Math.random() * mapCells.x, y: Math.random() * mapCells.y },
+    B: { x: Math.random() * mapCells.x, y: Math.random() * mapCells.y },
+  };
+  map.lines
+    .filter((line) =>
+      intersect({
+        ...water,
+        C: destinations[line.start].position,
+        D: destinations[line.end].position,
+      })
+    )
+    .forEach((line) => {
+      line.ferries = 1;
+    });
+
+  let mountains: { A: { x: number; y: number }; B: { x: number; y: number } };
+  do {
+    mountains = {
+      A: { x: Math.random() * mapCells.x, y: Math.random() * mapCells.y },
+      B: { x: Math.random() * mapCells.x, y: Math.random() * mapCells.y },
+    };
+  } while (
+    intersect({
+      ...mountains,
+      C: water.A,
+      D: water.B,
+    })
+  );
+  map.lines
+    .filter((line) =>
+      intersect({
+        ...mountains,
+        C: destinations[line.start].position,
+        D: destinations[line.end].position,
+      })
+    )
+    .forEach((line) => {
+      line.isTunnel = true;
+    });
+
   // Build a graph
   const graph = new UndirectedGraph();
   map.destinations.forEach((destination) => graph.addNode(destination.name));
   console.log(graph.nodes(), map.destinations, map.lines);
   map.lines.forEach((line) =>
     graph.addEdge(line.start, line.end, {
-      weight: line.length + (line.isFerry ? 1 : 0) + (line.isTunnel ? 1 : 0),
+      weight: line.length + line.ferries + (line.isTunnel ? 1 : 0),
     })
   );
 
@@ -340,7 +380,7 @@ export function generateMap(mapSettings: MapSettings): GameMap {
       }
     });
     graph.addEdge(line.start, line.end, {
-      weight: line.length + (line.isFerry ? 1 : 0) + (line.isTunnel ? 1 : 0),
+      weight: line.length + line.ferries + (line.isTunnel ? 1 : 0),
     });
     return (
       newScores.reduce((a, b) => a + b, 0) -
