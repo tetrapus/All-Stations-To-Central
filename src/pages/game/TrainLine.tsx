@@ -22,7 +22,6 @@ const Locomotive = styled(Flex)<{
   idx: number;
 }>(
   {
-    borderImageSlice: 1,
     borderWidth: 2,
     borderStyle: "solid",
     margin: "0px 4px 0px 4px",
@@ -34,6 +33,7 @@ const Locomotive = styled(Flex)<{
   ({ color, ownerColor, line, idx }) => ({
     borderColor: color,
     borderImage: color,
+    borderImageSlice: 1,
     background: ownerColor,
     transform: `translateY(${
       (10 * line.length) / 2 -
