@@ -1,10 +1,12 @@
 import { Flex } from "atoms/Flex";
 import { Stack } from "atoms/Stack";
 import { CELL_SIZE } from "data/Board";
-import { GameMap, Route } from "data/Game";
-import React from "react";
+import { Destination, GameMap, Route } from "data/Game";
+import React, { useContext, useState } from "react";
 import { sortBy } from "util/sort-by";
 import { indexBy } from "util/index-by";
+import { NavigationContext } from "./NavigationContext";
+import styled from "@emotion/styled";
 
 interface Props {
   count?: number;
@@ -12,21 +14,30 @@ interface Props {
   clickable?: boolean;
   map: GameMap;
   onClick?: () => void;
-  onHighlight?: (route?: Route) => void;
-  onUnhighlight?: (route?: Route) => void;
 }
 
-export const RouteCard = ({
-  count,
-  route,
-  clickable,
-  onClick,
-  onHighlight,
-  onUnhighlight,
-  map,
-}: Props) => {
+const CityHint = styled.div<{
+  city: Destination;
+  map: GameMap;
+  highlighted: boolean;
+}>(
+  {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    position: "absolute",
+  },
+  ({ city, map, highlighted }) => ({
+    background: highlighted ? "lightgreen" : "orange",
+    left: `${((city.position.x * CELL_SIZE) / map.size.width) * 100}%`,
+    top: `${((city.position.y * CELL_SIZE) / map.size.height) * 100}%`,
+  })
+);
+
+export const RouteCard = ({ count, route, clickable, map, onClick }: Props) => {
+  const { onHighlight, onUnhighlight } = useContext(NavigationContext);
+  const [highlighted, setHighlighted] = useState(false);
   const destinations = indexBy(map.destinations, "name");
-  const mapSize = map.size;
   const ends = route
     ? sortBy([route.start, route.end], (name) => destinations[name].position.y)
     : undefined;
@@ -41,9 +52,11 @@ export const RouteCard = ({
       }}
       onClick={onClick}
       onMouseEnter={() => {
+        setHighlighted(true);
         onHighlight?.(route);
       }}
       onMouseLeave={() => {
+        setHighlighted(false);
         onUnhighlight?.(route);
       }}
     >
@@ -66,44 +79,16 @@ export const RouteCard = ({
       >
         {route ? (
           <>
-            <div
-              css={{
-                background: "orange",
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                position: "absolute",
-                left: `${
-                  ((destinations[route.start].position.x * CELL_SIZE) /
-                    mapSize.width) *
-                  100
-                }%`,
-                top: `${
-                  ((destinations[route.start].position.y * CELL_SIZE) /
-                    mapSize.height) *
-                  100
-                }%`,
-              }}
-            ></div>
-            <div
-              css={{
-                background: "orange",
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                position: "absolute",
-                left: `${
-                  ((destinations[route.end].position.x * CELL_SIZE) /
-                    mapSize.width) *
-                  100
-                }%`,
-                top: `${
-                  ((destinations[route.end].position.y * CELL_SIZE) /
-                    mapSize.height) *
-                  100
-                }%`,
-              }}
-            ></div>
+            <CityHint
+              city={destinations[route.start]}
+              map={map}
+              highlighted={highlighted}
+            ></CityHint>
+            <CityHint
+              city={destinations[route.end]}
+              map={map}
+              highlighted={highlighted}
+            ></CityHint>
           </>
         ) : null}
         <div css={{ margin: "auto", zIndex: 1 }}>{count}</div>

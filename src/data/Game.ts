@@ -129,11 +129,14 @@ export interface Game {
   created: Timestamp;
   isStarted: boolean;
   isReady: boolean;
-  map?: GameMap;
+  playerCount: number;
+  readyCount: number;
+  map: GameMap;
   turn: number;
   turnState?: "choose" | "drawn" | "routes-taken" | "ferry-attempted";
   boardState: BoardState;
   finalTurn?: number;
+  scored?: boolean;
 }
 // todo
 export const GameConverter: FirestoreDataConverter<Game> = {

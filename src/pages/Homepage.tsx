@@ -40,6 +40,8 @@ export function Homepage() {
                 isStarted: false,
                 isReady: false,
                 turn: 0,
+                playerCount: 1,
+                readyCount: 0,
                 boardState: {
                   carriages: {
                     deck: [],
