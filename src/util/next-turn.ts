@@ -1,5 +1,5 @@
 import { Game } from "data/Game";
-import { serverTimestamp } from "firebase/firestore";
+import { deleteField, serverTimestamp } from "firebase/firestore";
 
 export function getNextTurn(game: Game, isSkip?: boolean) {
   if (game.removedPlayers.length === game.playerCount) {
@@ -16,7 +16,7 @@ export function getNextTurn(game: Game, isSkip?: boolean) {
       turn >= game.playerCount &&
       (!game.lastMove || game.lastMove > turn - game.playerCount)
         ? serverTimestamp()
-        : undefined,
+        : deleteField(),
     lastMove: isSkip ? game.lastMove : game.turn,
   };
 }
