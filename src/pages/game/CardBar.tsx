@@ -18,6 +18,7 @@ import { fillRepeats } from "util/citygen";
 import { getCardCounts } from "util/get-card-counts";
 import { isCurrentPlayer } from "util/is-current-player";
 import { getMapGraph, getOwnedLines } from "util/lines";
+import { getNextTurn } from "util/next-turn";
 import { range } from "util/range";
 import { runPlayerAction } from "util/run-game-action";
 import { sortBy } from "util/sort-by";
@@ -355,8 +356,7 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
                       await transaction.update(docRef("games", game.id), {
                         "boardState.carriages.discard":
                           game.boardState.carriages.discard,
-                        turn: game.turn + 1,
-                        turnState: "choose",
+                        ...getNextTurn(game),
                       });
                       await transaction.set(
                         doc(collectionRef("games", game.id, "events")),
@@ -384,8 +384,7 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
                         me.name,
                       "boardState.carriages.discard":
                         game.boardState.carriages.discard,
-                      turn: game.turn + 1,
-                      turnState: "choose",
+                      ...getNextTurn(game),
                     });
                     if (me.trainCount - usedCards.length <= 2) {
                       // Final turn triggered!!!
@@ -490,8 +489,7 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
                       game.boardState.carriages.discard,
                     "boardState.carriages.faceUp":
                       game.boardState.carriages.faceUp,
-                    turn: newTurn ? game.turn + 1 : game.turn,
-                    turnState: newTurn ? "choose" : "drawn",
+                    ...(newTurn ? getNextTurn(game) : { turnState: "drawn" }),
                   });
                   transaction.update(
                     docRef("games", game.id, "players", me.name),
@@ -545,8 +543,7 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
                   "boardState.carriages.deck": game.boardState.carriages.deck,
                   "boardState.carriages.discard":
                     game.boardState.carriages.discard,
-                  turn: newTurn ? game.turn + 1 : game.turn,
-                  turnState: newTurn ? "choose" : "drawn",
+                  ...(newTurn ? getNextTurn(game) : { turnState: "drawn" }),
                 });
                 transaction.update(
                   docRef("games", game.id, "players", me.name),

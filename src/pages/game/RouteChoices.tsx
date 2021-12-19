@@ -7,6 +7,7 @@ import { docRef, collectionRef } from "init/firebase";
 import { RouteCard } from "./RouteCard";
 import { getMapGraph, getOwnedLines } from "util/lines";
 import { runPlayerAction } from "util/run-game-action";
+import { getNextTurn } from "../../util/next-turn";
 
 interface Props {
   routes: Route[];
@@ -76,10 +77,7 @@ export const RouteChoices = ({ routes, maxDiscard, game, me }: Props) => {
                 ...game.boardState.routes.discard,
                 ...routes.filter((route, idx) => chosen.includes(idx)),
               ],
-              turnState:
-                game.turnState === "routes-taken" ? "choose" : game.turnState,
-              turn:
-                game.turnState === "routes-taken" ? game.turn + 1 : game.turn,
+              ...(game.turnState === "routes-taken" ? getNextTurn(game) : {}),
               readyCount: game.readyCount + 1,
               isReady:
                 game.isStarted && game.readyCount + 1 >= game.playerCount,

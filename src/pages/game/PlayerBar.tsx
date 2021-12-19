@@ -9,6 +9,7 @@ import React from "react";
 import { fillRepeats } from "util/citygen";
 import { generateColor } from "util/colorgen";
 import { runGameAction, runPlayerAction } from "util/run-game-action";
+import { MoveTimer } from "./MoveTimer";
 import { PlayerColor } from "./PlayerColor";
 import { ScoreCard } from "./ScoreCard";
 
@@ -35,6 +36,7 @@ export function PlayerBar({ players, game, username }: Props) {
               css={{
                 border: "1px solid",
                 margin: 3,
+                position: "relative",
                 borderColor:
                   game.turn % players.length === player.order && game.isReady
                     ? "#111"
@@ -60,6 +62,11 @@ export function PlayerBar({ players, game, username }: Props) {
                   alignItems: "center",
                 }}
               >
+                <MoveTimer
+                  game={game}
+                  me={me}
+                  playerNo={player.order}
+                ></MoveTimer>
                 <Flex
                   css={{
                     alignItems: "center",

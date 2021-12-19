@@ -1,3 +1,5 @@
+import TimeAgo from "react-timeago";
+
 import { Link } from "react-router-dom";
 import {
   useCollectionData,
@@ -23,6 +25,7 @@ import { RouteChoices } from "./RouteChoices";
 import { Flex } from "atoms/Flex";
 import { RouteCard } from "./RouteCard";
 import { LineSelection } from "./LineSelection";
+import { GameEventConverter } from "data/GameEvent";
 
 /**
  * TODO:
@@ -57,7 +60,10 @@ export function GameInterface() {
   ); // todo: loading
 
   const [events] = useCollectionData(
-    query(collectionRef("games", id, "events"), orderBy("timestamp", "desc"))
+    query(
+      collectionRef("games", id, "events").withConverter(GameEventConverter),
+      orderBy("timestamp", "desc")
+    )
   ); // todo: loading
 
   const [username] = useLocalStorage<string>("username");
@@ -189,7 +195,13 @@ export function GameInterface() {
           }}
         >
           {events?.map((event) => (
-            <div>{event.message}</div>
+            <div>
+              {event.message}{" "}
+              <TimeAgo
+                date={event.timestamp.toDate()}
+                css={{ color: "grey", fontSize: 12 }}
+              />
+            </div>
           ))}
         </Stack>
       </Stack>

@@ -46,7 +46,15 @@ export function GameBoard({
   selectedLine,
   onLineSelected,
 }: Props) {
-  const [mapSettings, setMapSettings] = useState(DEFAULT_MAP_SETTINGS);
+  const [mapSettings, setMapSettings] = useState({
+    cities: DEFAULT_MAP_SETTINGS.cities.toString(),
+    connectivity: DEFAULT_MAP_SETTINGS.connectivity.toString(),
+    routes: DEFAULT_MAP_SETTINGS.routes.toString(),
+    size: {
+      width: DEFAULT_MAP_SETTINGS.size.width.toString(),
+      height: DEFAULT_MAP_SETTINGS.size.height.toString(),
+    },
+  });
 
   if (!game.map) return null;
 
@@ -75,7 +83,7 @@ export function GameBoard({
               onChange={(e) => {
                 setMapSettings({
                   ...mapSettings,
-                  cities: Number(e.currentTarget.value),
+                  cities: e.currentTarget.value,
                 });
               }}
               css={{ width: 80 }}
@@ -86,7 +94,7 @@ export function GameBoard({
               onChange={(e) => {
                 setMapSettings({
                   ...mapSettings,
-                  connectivity: Number(e.currentTarget.value),
+                  connectivity: e.currentTarget.value,
                 });
               }}
               css={{ width: 80 }}
@@ -98,7 +106,7 @@ export function GameBoard({
               onChange={(e) => {
                 setMapSettings({
                   ...mapSettings,
-                  routes: Number(e.currentTarget.value),
+                  routes: e.currentTarget.value,
                 });
               }}
             />
@@ -110,7 +118,7 @@ export function GameBoard({
                 setMapSettings({
                   ...mapSettings,
                   size: {
-                    width: Number(e.currentTarget.value),
+                    width: e.currentTarget.value,
                     height: mapSettings.size.height,
                   },
                 });
@@ -124,7 +132,7 @@ export function GameBoard({
                 setMapSettings({
                   ...mapSettings,
                   size: {
-                    height: Number(e.currentTarget.value),
+                    height: e.currentTarget.value,
                     width: mapSettings.size.width,
                   },
                 });
@@ -136,10 +144,19 @@ export function GameBoard({
                   return;
                 }
                 runPlayerAction(game, me, async ({ game, me, transaction }) => {
+                  const newSettings = {
+                    cities: Number(mapSettings.cities),
+                    connectivity: Number(mapSettings.connectivity),
+                    routes: Number(mapSettings.routes),
+                    size: {
+                      width: Number(mapSettings.size.width),
+                      height: Number(mapSettings.size.height),
+                    },
+                  };
                   transaction.update(docRef("games", game.id), {
                     map: generateMap({
                       ...DEFAULT_MAP_SETTINGS,
-                      ...mapSettings,
+                      ...newSettings,
                     }),
                   });
                   await transaction.set(

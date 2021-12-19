@@ -157,13 +157,6 @@ export interface BoardState {
   };
 }
 
-export interface GameEvent {
-  timestamp: Timestamp;
-  author: string;
-  type?: "drew-carriages" | "drew-routes" | "played-train";
-  message: string;
-}
-
 export interface Game {
   id: string;
   created: Timestamp;
@@ -171,11 +164,14 @@ export interface Game {
   isReady: boolean;
   playerCount: number;
   readyCount: number;
+  removedPlayers: number[];
   map: GameMap;
   turn: number;
-  turnState?: "choose" | "drawn" | "routes-taken" | "ferry-attempted";
+  turnStart?: Timestamp;
+  turnState?: "choose" | "drawn" | "routes-taken";
   boardState: BoardState;
   finalTurn?: number;
+  moveTimer?: number;
   scored?: boolean;
 }
 // todo

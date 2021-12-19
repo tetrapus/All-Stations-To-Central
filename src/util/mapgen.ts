@@ -141,7 +141,12 @@ export function generateMap(mapSettings: MapSettings): GameMap {
     if (candidate.position.x % 2 === 0) {
       candidate.position.y += 0.5;
     }
-    if (map.destinations.some((city) => distance(city, candidate) <= 0.8)) {
+    if (
+      map.destinations.some(
+        (city) =>
+          distance(city, candidate) <= 0.8 || city.name === candidate.name
+      )
+    ) {
       continue;
     }
     map.destinations.push(candidate);
