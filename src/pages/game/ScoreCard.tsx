@@ -1,3 +1,4 @@
+import { Breakpoint } from "atoms/Breakpoint";
 import { Flex } from "atoms/Flex";
 import { Stack } from "atoms/Stack";
 import { GameMap } from "data/Game";
@@ -18,6 +19,9 @@ export function ScoreCard({ map }: Props) {
         borderRadius: 2,
         border: "1px solid black",
         padding: "2px 4px",
+        [Breakpoint.MOBILE]: {
+          display: "none",
+        },
       }}
     >
       <strong css={{ marginLeft: "auto" }}>Points</strong>

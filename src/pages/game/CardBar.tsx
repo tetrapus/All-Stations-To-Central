@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import arrayShuffle from "array-shuffle";
+import { Breakpoint } from "atoms/Breakpoint";
 import { Flex } from "atoms/Flex";
 import { Stack } from "atoms/Stack";
 import { TextButton } from "atoms/TextButton";
@@ -165,6 +166,13 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
         alignItems: "center",
         "& > *": {
           width: "33%",
+        },
+        [Breakpoint.MOBILE]: {
+          flexDirection: "column-reverse",
+          height: "auto",
+          "& > *": {
+            width: "100%",
+          },
         },
       }}
     >
@@ -569,7 +577,7 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
           map={game.map}
           onClick={() => {
             runPlayerAction(game, me, async ({ game, me, transaction }) => {
-              if (isCurrentPlayer(game, me) && game.turnState !== "choose") {
+              if (isCurrentPlayer(game, me) && game.turnState === "choose") {
                 if (game.boardState.routes.deck.length <= 3) {
                   game.boardState.routes.deck = [
                     ...game.boardState.routes.deck,

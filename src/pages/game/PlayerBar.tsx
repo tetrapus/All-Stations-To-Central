@@ -1,4 +1,5 @@
 import arrayShuffle from "array-shuffle";
+import { Breakpoint } from "atoms/Breakpoint";
 import { Flex } from "atoms/Flex";
 import { Stack } from "atoms/Stack";
 import { TextButton } from "atoms/TextButton";
@@ -28,8 +29,14 @@ export function PlayerBar({ players, game, username }: Props) {
   const me = players?.find((player) => player.name === username);
 
   return (
-    <Flex>
-      <Flex css={{ marginRight: "auto" }}>
+    <Flex
+      css={{
+        [Breakpoint.MOBILE]: {
+          flexDirection: "column-reverse",
+        },
+      }}
+    >
+      <Flex css={{ marginRight: "auto", overflow: "scroll" }}>
         {players?.map((player) => {
           return (
             <Flex

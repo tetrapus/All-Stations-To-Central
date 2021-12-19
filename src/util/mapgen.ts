@@ -116,11 +116,11 @@ export function generateMap(mapSettings: MapSettings): GameMap {
   };
 
   const margins = {
-    left: 1,
-    right: 2,
+    left: 0.5,
+    right: 1,
 
-    top: 1,
-    bottom: 2,
+    top: 0.5,
+    bottom: 1,
   };
   const mapCells = {
     x: Math.floor(mapSettings.size.width / CELL_SIZE),

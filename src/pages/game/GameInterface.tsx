@@ -26,12 +26,12 @@ import { Flex } from "atoms/Flex";
 import { RouteCard } from "./RouteCard";
 import { LineSelection } from "./LineSelection";
 import { GameEventConverter } from "data/GameEvent";
+import { Breakpoint } from "atoms/Breakpoint";
 
 /**
  * TODO:
  *
- * Route Timer
- * Responsive
+ * Leave mid-game
  * Train Count Selection / Balancing
  * Rich Event Feed
  * Sounds
@@ -43,7 +43,6 @@ import { GameEventConverter } from "data/GameEvent";
  * Background Generation
  *
  * BUGS
- * Can't leave in the middle of a game
  * Should be able to easily find destinations
  * Prevent claiming both routes for dual route trains
  **/
@@ -123,7 +122,7 @@ export function GameInterface() {
 
   return (
     <NavigationContext.Provider value={{ onHighlight, onUnhighlight }}>
-      <Stack>
+      <Stack css={{ height: "100vh" }}>
         <PlayerBar players={players} game={game} username={username} />
         {game.finalTurn && game.finalTurn < game.turn && (
           <Scoreboard players={players} game={game}></Scoreboard>
@@ -136,7 +135,16 @@ export function GameInterface() {
             setSelectedLine={setSelectedLine}
           />
         )}
-        <Flex>
+        <Flex
+          css={{
+            flexGrow: 1,
+            maxHeight: "calc(100vh - 74px - 78px - 28px)",
+            [Breakpoint.MOBILE]: {
+              maxHeight: "100vh",
+              flexDirection: "column",
+            },
+          }}
+        >
           <GameBoard
             game={game}
             me={me}
@@ -147,63 +155,71 @@ export function GameInterface() {
             }
             selectedLine={selectedLine}
           />
-          <Stack css={{ marginLeft: "auto", marginTop: 16 }}>
-            {me?.routeChoices ? (
-              <Stack css={{ background: "pink" }}>
-                <div
-                  css={{
-                    fontSize: 13,
-                    fontWeight: "bold",
-                    padding: 4,
-                    textAlign: "center",
-                  }}
-                >
-                  Discard up to{" "}
-                  {me.routeChoices.routes.length - me.routeChoices.keepMin}
-                </div>
-                <RouteChoices
-                  routes={me.routeChoices.routes}
-                  maxDiscard={
-                    me.routeChoices.routes.length - me.routeChoices.keepMin
-                  }
-                  game={game}
-                  me={me}
+          <Stack css={{ marginTop: 16, flexGrow: 1 }}>
+            <Stack
+              css={{
+                marginBottom: 8,
+                overflow: "scroll",
+                [Breakpoint.MOBILE]: {
+                  flexDirection: "row",
+                },
+              }}
+            >
+              {me?.routeChoices ? (
+                <Stack css={{ background: "pink" }}>
+                  <div
+                    css={{
+                      fontSize: 13,
+                      fontWeight: "bold",
+                      padding: 4,
+                      textAlign: "center",
+                    }}
+                  >
+                    Discard up to{" "}
+                    {me.routeChoices.routes.length - me.routeChoices.keepMin}
+                  </div>
+                  <RouteChoices
+                    routes={me.routeChoices.routes}
+                    maxDiscard={
+                      me.routeChoices.routes.length - me.routeChoices.keepMin
+                    }
+                    game={game}
+                    me={me}
+                  />
+                </Stack>
+              ) : null}
+              {me?.routes.map((route, idx) => (
+                <RouteCard
+                  route={route}
+                  count={route.points}
+                  map={map}
+                  key={idx}
                 />
-              </Stack>
-            ) : null}
-            {me?.routes.map((route, idx) => (
-              <RouteCard
-                route={route}
-                count={route.points}
-                map={map}
-                key={idx}
-              />
-            ))}
+              ))}
+            </Stack>
+            <Stack
+              css={{
+                height: 150,
+                textAlign: "center",
+                padding: "8px 8px 8px 0px",
+                marginTop: "auto",
+                borderTop: "1px solid black",
+                overflow: "scroll",
+              }}
+            >
+              {events?.map((event) => (
+                <div>
+                  {" "}
+                  <TimeAgo
+                    date={event.timestamp.toDate()}
+                    css={{ color: "grey", fontSize: 10 }}
+                  />
+                  <div css={{ fontSize: 12 }}>{event.message}</div>
+                </div>
+              ))}
+            </Stack>
           </Stack>
         </Flex>
-        <Stack
-          css={{
-            height: 40,
-            width: "100%",
-            textAlign: "center",
-            position: "fixed",
-            background: "white",
-            paddingTop: 8,
-            borderTop: "1px solid black",
-            overflow: "scroll",
-            bottom: 0,
-          }}
-        >
-          {events?.map((event) => (
-            <div>
-              {event.message}{" "}
-              <TimeAgo
-                date={event.timestamp.toDate()}
-                css={{ color: "grey", fontSize: 12 }}
-              />
-            </div>
-          ))}
-        </Stack>
       </Stack>
     </NavigationContext.Provider>
   );

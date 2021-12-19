@@ -46,7 +46,7 @@ export const RouteCard = ({ count, route, clickable, map, onClick }: Props) => {
       css={{
         alignItems: "center",
         textAlign: "center",
-        fontSize: 13,
+        fontSize: 12,
         margin: 4,
         cursor: clickable ? "pointer" : undefined,
       }}
@@ -72,6 +72,7 @@ export const RouteCard = ({ count, route, clickable, map, onClick }: Props) => {
           width: 64,
           height: 36,
           borderRadius: 2,
+          fontSize: 16,
           color: "white",
           fontWeight: "bold",
           position: "relative",
