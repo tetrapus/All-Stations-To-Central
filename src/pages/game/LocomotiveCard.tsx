@@ -1,3 +1,4 @@
+import { Breakpoint } from "atoms/Breakpoint";
 import { Flex } from "atoms/Flex";
 import { TrainColor, trainColors, trainPatterns } from "data/Game";
 import React from "react";
@@ -19,6 +20,10 @@ export const LocomotiveCard = ({ color, count, clickable, onClick }: Props) => (
       border: "1px solid #999",
       background: color ? trainColors[color] : "white",
       cursor: clickable ? "pointer" : undefined,
+      [Breakpoint.MOBILE]: {
+        height: 52,
+        width: 36,
+      },
     }}
     onClick={onClick}
   >
@@ -29,7 +34,16 @@ export const LocomotiveCard = ({ color, count, clickable, onClick }: Props) => (
         background: color ? trainPatterns(0.5)[color] : undefined,
       }}
     >
-      <div css={{ fontSize: 24, fontWeight: "bold", margin: "auto" }}>
+      <div
+        css={{
+          fontSize: 24,
+          fontWeight: "bold",
+          margin: "auto",
+          [Breakpoint.MOBILE]: {
+            fontSize: 16,
+          },
+        }}
+      >
         {count}
       </div>
     </Flex>

@@ -8,6 +8,8 @@ import { RouteCard } from "./RouteCard";
 import { getMapGraph, getOwnedLines } from "util/lines";
 import { runPlayerAction } from "util/run-game-action";
 import { getNextTurn } from "../../util/next-turn";
+import { Breakpoint } from "atoms/Breakpoint";
+import { Stack } from "atoms/Stack";
 
 interface Props {
   routes: Route[];
@@ -26,24 +28,34 @@ export const RouteChoices = ({ routes, maxDiscard, game, me }: Props) => {
 
   return (
     <>
-      {routes.map((route, idx) => (
-        <div
-          onClick={() => {
-            if (chosen.includes(idx)) {
-              setChosen(chosen.filter((x) => x !== idx));
-            } else if (chosen.length < maxDiscard) {
-              setChosen([...chosen, idx]);
+      <Stack
+        css={{
+          [Breakpoint.MOBILE]: {
+            flexDirection: "row",
+            width: "100vw",
+            justifyContent: "center",
+          },
+        }}
+      >
+        {routes.map((route, idx) => (
+          <div
+            onClick={() => {
+              if (chosen.includes(idx)) {
+                setChosen(chosen.filter((x) => x !== idx));
+              } else if (chosen.length < maxDiscard) {
+                setChosen([...chosen, idx]);
+              }
+            }}
+            css={
+              chosen.includes(idx) ? { fontStyle: "italic", opacity: 0.5 } : {}
             }
-          }}
-          css={
-            chosen.includes(idx) ? { fontStyle: "italic", opacity: 0.5 } : {}
-          }
-        >
-          <RouteCard route={route} count={route.points} key={idx} map={map} />
-        </div>
-      ))}
+          >
+            <RouteCard route={route} count={route.points} key={idx} map={map} />
+          </div>
+        ))}
+      </Stack>
       <TextButton
-        css={{ fontSize: 14 }}
+        css={{ fontSize: 14, margin: "8px auto" }}
         onClick={() => {
           runPlayerAction(game, me, async ({ game, me, transaction }) => {
             if (!game.map) {

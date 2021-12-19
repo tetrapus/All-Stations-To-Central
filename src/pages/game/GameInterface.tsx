@@ -39,7 +39,6 @@ import { Breakpoint } from "atoms/Breakpoint";
  * AI Players
  * Special Rules
  * Rules Explainer
- * Responsive / Pan Pinch Zoom
  * Background Generation
  *
  * BUGS

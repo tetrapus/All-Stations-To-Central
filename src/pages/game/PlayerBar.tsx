@@ -130,10 +130,11 @@ export function PlayerBar({ players, game, username }: Props) {
           );
         })}
       </Flex>
-      <span>
+      <Flex css={{ alignItems: "center" }}>
         {!game.isStarted ? (
           players?.find((player) => player.name === username) ? (
             <TextButton
+              css={{ margin: 8 }}
               onClick={async (event) => {
                 if (!me) {
                   return;
@@ -164,6 +165,7 @@ export function PlayerBar({ players, game, username }: Props) {
             </TextButton>
           ) : (
             <TextButton
+              css={{ margin: 8 }}
               onClick={async (event) => {
                 await runGameAction(game, async ({ game, transaction }) => {
                   await transaction.update(docRef("games", game.id), {
@@ -207,6 +209,7 @@ export function PlayerBar({ players, game, username }: Props) {
         ) : null}
         {!game.isStarted && game.map && me ? (
           <TextButton
+            css={{ margin: 8 }}
             onClick={async () => {
               await runPlayerAction(
                 game,
@@ -274,7 +277,7 @@ export function PlayerBar({ players, game, username }: Props) {
             Start Game
           </TextButton>
         ) : null}
-      </span>
+      </Flex>
       {game.map && <ScoreCard map={game.map} />}
     </Flex>
   );

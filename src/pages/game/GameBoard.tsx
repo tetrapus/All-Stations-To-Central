@@ -98,6 +98,9 @@ export function GameBoard({
               fontWeight: "bold",
               fontSize: 24,
               marginRight: "auto",
+              [Breakpoint.MOBILE]: {
+                fontSize: 16,
+              },
             }}
           >
             {map?.name}
