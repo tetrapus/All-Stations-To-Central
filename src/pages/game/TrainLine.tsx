@@ -9,23 +9,16 @@ import {
   trainColors,
   tunnelColors,
   ferryInsignia,
+  trainPatterns,
 } from "data/Game";
-import { doc, serverTimestamp } from "firebase/firestore";
-import { dijkstra } from "graphology-shortest-path";
-import { docRef, collectionRef } from "init/firebase";
 import React from "react";
-import { fillRepeats } from "util/citygen";
 import { getCardCounts } from "util/get-card-counts";
 import { indexBy } from "util/index-by";
-import { isCurrentPlayer } from "util/is-current-player";
-import { getMapGraph, getOwnedLines } from "util/lines";
 import { distance } from "util/mapgen";
-import { runPlayerAction } from "util/run-game-action";
-import { sortBy } from "util/sort-by";
+import { PlayerSymbol } from "./PlayerColor";
 
 const Locomotive = styled(Flex)<{
   color: string;
-  ownerColor: string;
   line: Line;
   idx: number;
 }>(
@@ -37,22 +30,41 @@ const Locomotive = styled(Flex)<{
     position: "relative",
     top: -4,
   },
-  ({ color, ownerColor, line, idx }) => ({
+  ({ color, line, idx }) => ({
     borderColor: color,
     borderImage: color,
     borderImageSlice: 1,
-    borderStyle: line.isTunnel ? "dashed" : "solid",
+    borderStyle: line.isTunnel
+      ? "dashed"
+      : line.ferries > idx
+      ? "double"
+      : "solid",
     borderRadius: line.isTunnel || line.ferries ? 4 : 0,
-    background: ownerColor,
-    backgroundImage: line.ferries > idx ? ferryInsignia : undefined,
-    backgroundRepeat: "no-repeat",
-    backgroundSize: "contain",
-    backgroundPosition: "center",
+    borderWidth: line.ferries > idx ? 3 : 2,
     transform: `translateY(${
       (10 * line.length) / 2 -
       Math.abs((idx + 0.5 - Math.ceil(line.length / 2)) / line.length) *
         (10 * line.length)
     }px) rotate(${-((idx + 0.5 - line.length / 2) / line.length) * 40}deg)`,
+  })
+);
+
+const LocomotiveInner = styled(Flex)<{
+  ownerColor?: string;
+  line: Line;
+  idx: number;
+}>(
+  {
+    width: "100%",
+    margin: 1,
+  },
+  ({ ownerColor, line, idx }) => ({
+    background: ownerColor || "var(--hovercolor)",
+    backgroundImage:
+      !ownerColor && line.ferries > idx ? "var(--ferryImg)" : undefined,
+    backgroundRepeat: "no-repeat",
+    backgroundSize: "contain",
+    backgroundPosition: "center",
   })
 );
 
@@ -67,7 +79,7 @@ const TrainLineContainer = styled(Flex)<{
     position: "absolute",
     transformOrigin: "top left",
     height: 4,
-    "--hovercolor": "rgba(0,0,0,0.2)",
+    "--ferryImg": ferryInsignia,
   },
   ({ line, destinations, colorIdx, playable, hintColor }) => {
     const citydex = indexBy(destinations, "name");
@@ -88,11 +100,24 @@ const TrainLineContainer = styled(Flex)<{
       width: distance(start, end) * CELL_SIZE,
       ":hover": {
         "--hovercolor": playable ? hintColor : undefined,
+        "--ferryImg": playable ? "var(--hovercolor)" : undefined,
         cursor: playable ? "pointer" : undefined,
       },
     };
   }
 );
+
+interface Props {
+  game: Game;
+  me?: Player;
+  players: { [name: string]: Player };
+  line: Line;
+  lineNo: number;
+  color: string;
+  colorIdx: number;
+
+  onLineSelected(line: Line, lineNo: number, colorIdx: number): void;
+}
 
 export function TrainLine({
   game,
@@ -101,16 +126,9 @@ export function TrainLine({
   color,
   colorIdx,
   me,
-  playerColors,
-}: {
-  game: Game;
-  me?: Player;
-  playerColors: { [name: string]: string };
-  line: Line;
-  lineNo: number;
-  color: string;
-  colorIdx: number;
-}) {
+  players,
+  onLineSelected,
+}: Props) {
   const map = game.map;
   const start = map.destinations.find(
     (destination) => line.start === destination.name
@@ -123,8 +141,8 @@ export function TrainLine({
   const playable = (game: Game, me: Player) => {
     const counts = Object.fromEntries(getCardCounts(me));
     return (
-      game.turnState === "choose" &&
-      isCurrentPlayer(game, me) &&
+      // game.turnState === "choose" &&
+      // isCurrentPlayer(game, me) &&
       !owner &&
       line.length <= me.trainCount &&
       (color === "rainbow"
@@ -141,78 +159,10 @@ export function TrainLine({
       playable={!!(me && playable(game, me))}
       hintColor={me?.color}
       destinations={map.destinations}
-      key={lineNo * 2 + colorIdx}
       onClick={() => {
-        if (!me) {
-          return;
+        if (!!(me && playable(game, me))) {
+          onLineSelected(line, lineNo, colorIdx);
         }
-        runPlayerAction(game, me, async ({ game, me, transaction }) => {
-          if (game.map && playable(game, me) && game.isReady) {
-            const counts = Object.fromEntries(getCardCounts(me));
-            const useColor =
-              line.color[colorIdx] === "rainbow"
-                ? sortBy(Object.entries(counts), (e) => e[1])[0][0] ||
-                  line.color[colorIdx]
-                : line.color[colorIdx];
-            const coreUsed = Math.min(line.length, counts[useColor]);
-            const rainbowsUsed = line.length - coreUsed;
-            const discard = [
-              ...Array(coreUsed).fill({ color: useColor }),
-              ...Array(rainbowsUsed).fill({ color: "rainbow" }),
-            ];
-
-            await transaction.update(docRef("games", game.id), {
-              [`boardState.lines.${lineNo}.${colorIdx}`]: me.name,
-              "boardState.carriages.discard": [
-                ...game.boardState.carriages.discard,
-                ...discard,
-              ],
-              turn: game.turn + 1,
-              turnState: "choose",
-            });
-            if (me.trainCount - line.length <= 0) {
-              // Final turn triggered!!!
-              await transaction.update(docRef("games", game.id), {
-                finalTurn: game.turn + game.playerCount - 1,
-              });
-            }
-            // Update any won routes
-            const graph = getMapGraph(game.map);
-            const ownedLines = getOwnedLines(me, game);
-            graph.addEdge(line.start, line.end);
-
-            ownedLines.forEach((line) => graph.addEdge(line.start, line.end));
-            const routes = me.routes.map((route) => ({
-              ...route,
-              won:
-                route.won ||
-                !!dijkstra.bidirectional(graph, route.start, route.end),
-            }));
-            await transaction.update(
-              docRef("games", game.id, "players", me.name),
-              {
-                trainCount: me.trainCount - line.length,
-                hand: fillRepeats(
-                  {
-                    ...counts,
-                    [useColor]: (counts[useColor] || 0) - coreUsed,
-                    rainbow: (counts["rainbow"] || 0) - rainbowsUsed,
-                  },
-                  (color) => ({ color })
-                ),
-                routes: routes,
-              }
-            );
-            await transaction.set(
-              doc(collectionRef("games", game.id, "events")),
-              {
-                author: me.name,
-                timestamp: serverTimestamp(),
-                message: `${me.name} claimed ${line.start} to ${line.end}`,
-              }
-            );
-          }
-        });
       }}
     >
       <Flex
@@ -226,14 +176,31 @@ export function TrainLine({
           <Locomotive
             key={idx}
             color={line.isTunnel ? tunnelColors[color] : trainColors[color]}
-            ownerColor={
-              game.boardState.lines[lineNo]?.[colorIdx]
-                ? playerColors[game.boardState.lines[lineNo]?.[colorIdx]]
-                : "var(--hovercolor)"
-            }
             line={line}
             idx={idx}
-          ></Locomotive>
+          >
+            <Flex
+              css={{
+                width: "100%",
+                background: trainPatterns(0.5)[color],
+                backgroundSize: "contain",
+              }}
+            >
+              <LocomotiveInner
+                line={line}
+                idx={idx}
+                ownerColor={
+                  players[game.boardState.lines[lineNo]?.[colorIdx]]?.color
+                }
+              >
+                {game.boardState.lines[lineNo]?.[colorIdx] && (
+                  <PlayerSymbol
+                    player={players[game.boardState.lines[lineNo]?.[colorIdx]]}
+                  ></PlayerSymbol>
+                )}
+              </LocomotiveInner>
+            </Flex>
+          </Locomotive>
         ))}
       </Flex>
     </TrainLineContainer>

@@ -7,9 +7,10 @@ import styled from "@emotion/styled";
 interface Props {
   destination: Destination;
   isHighlighted: boolean;
+  isSelected: boolean;
 }
 
-const CityNode = styled.div<{ isHighlighted: boolean }>(
+const CityNode = styled.div<{ isHighlighted: boolean; isSelected: boolean }>(
   {
     borderRadius: 12,
     width: 22,
@@ -17,11 +18,13 @@ const CityNode = styled.div<{ isHighlighted: boolean }>(
     border: "1px solid #FFD700",
     transform: "translateX(-50%)",
   },
-  ({ isHighlighted }) => ({
+  ({ isHighlighted, isSelected }) => ({
     background: isHighlighted
       ? "radial-gradient(circle, green 0%, lightgreen 100%)"
+      : isSelected
+      ? "#aaa"
       : "radial-gradient(circle, rgba(255,233,0,1) 0%, rgba(255,79,0,1) 100%)",
-    borderColor: isHighlighted ? "white" : undefined,
+    borderColor: isHighlighted || isSelected ? "white" : undefined,
   })
 );
 
@@ -37,10 +40,10 @@ const CityContainer = styled(Flex)<{ destination: Destination }>(
   })
 );
 
-export function City({ destination, isHighlighted }: Props) {
+export function City({ destination, isHighlighted, isSelected }: Props) {
   return (
     <CityContainer destination={destination}>
-      <CityNode isHighlighted={isHighlighted} />
+      <CityNode isHighlighted={isHighlighted} isSelected={isSelected} />
       <div
         css={{
           background: "rgba(0, 0, 0, 0.5)",

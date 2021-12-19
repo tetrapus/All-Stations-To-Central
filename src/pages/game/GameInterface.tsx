@@ -8,7 +8,7 @@ import { collectionRef } from "init/firebase";
 import { GameConverter, PlayerConverter } from "data/Game";
 import { orderBy, query } from "@firebase/firestore";
 import useLocalStorage from "@rehooks/local-storage";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router";
 import { TextButton } from "atoms/TextButton";
 import { docRef } from "init/firebase";
@@ -22,23 +22,27 @@ import { GameBoard } from "./GameBoard";
 import { RouteChoices } from "./RouteChoices";
 import { Flex } from "atoms/Flex";
 import { RouteCard } from "./RouteCard";
+import { LineSelection } from "./LineSelection";
 
 /**
  * TODO:
  *
- * Ferries
- * Tunnels
+ * Route Timer
+ * Responsive
+ * Train Count Selection / Balancing
  * Rich Event Feed
  * Sounds
  * Map Presets
+ * AI Players
  * Special Rules
  * Rules Explainer
- * Rainbow Route Color Selection
+ * Responsive / Pan Pinch Zoom
  * Background Generation
  *
  * BUGS
  * Can't leave in the middle of a game
  * Should be able to easily find destinations
+ * Prevent claiming both routes for dual route trains
  **/
 
 export function GameInterface() {
@@ -59,16 +63,34 @@ export function GameInterface() {
   const [username] = useLocalStorage<string>("username");
 
   const [highlightedNodes, setHighlightedNodes] = useState<string[]>([]);
-  const onHighlight = (route?: Route) => {
-    if (!route) return;
-    setHighlightedNodes([route.start, route.end]);
-  };
 
-  const onUnhighlight = (route?: Route) => {
-    if (!route) return;
+  const onHighlight = useCallback(
+    (route?: Route) => {
+      if (!route) return;
+      setHighlightedNodes([route.start, route.end]);
+    },
+    [setHighlightedNodes]
+  );
 
-    setHighlightedNodes([]);
-  };
+  const onUnhighlight = useCallback(
+    (route?: Route) => {
+      if (!route) return;
+
+      setHighlightedNodes([]);
+    },
+    [setHighlightedNodes]
+  );
+
+  const [selectedLine, setSelectedLine] = useState<LineSelection | undefined>();
+
+  // Once a line gets snapped up we must unselect it
+  useEffect(() => {
+    if (!selectedLine || !game) return;
+
+    if (game.boardState.lines[selectedLine.lineNo]?.[selectedLine.colorNo]) {
+      setSelectedLine(undefined);
+    }
+  }, [game, selectedLine]);
 
   const map = game?.map;
 
@@ -100,13 +122,24 @@ export function GameInterface() {
         {game.finalTurn && game.finalTurn < game.turn && (
           <Scoreboard players={players} game={game}></Scoreboard>
         )}
-        {me && <CardBar me={me} game={game} />}
+        {me && (
+          <CardBar
+            me={me}
+            game={game}
+            selectedLine={selectedLine}
+            setSelectedLine={setSelectedLine}
+          />
+        )}
         <Flex>
           <GameBoard
             game={game}
             me={me}
             highlightedNodes={highlightedNodes}
             players={players}
+            onLineSelected={(line, lineNo, colorNo) =>
+              setSelectedLine({ line, colorNo, lineNo, selection: [] })
+            }
+            selectedLine={selectedLine}
           />
           <Stack css={{ marginLeft: "auto", marginTop: 16 }}>
             {me?.routeChoices ? (

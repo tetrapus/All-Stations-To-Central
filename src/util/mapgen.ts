@@ -273,7 +273,7 @@ export function generateMap(mapSettings: MapSettings): GameMap {
       })
     )
     .forEach((line) => {
-      line.ferries = 1;
+      line.ferries += 1;
     });
 
   let mountains: { A: { x: number; y: number }; B: { x: number; y: number } };

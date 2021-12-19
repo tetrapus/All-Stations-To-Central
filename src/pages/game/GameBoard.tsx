@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { DEFAULT_MAP_SETTINGS, Game, Player } from "data/Game";
+import { DEFAULT_MAP_SETTINGS, Game, Line, Player } from "data/Game";
 import { Flex } from "atoms/Flex";
 import { TextButton } from "atoms/TextButton";
 import { TextInput } from "atoms/TextInput";
@@ -11,12 +11,17 @@ import { runPlayerAction } from "util/run-game-action";
 import { isCurrentPlayer } from "util/is-current-player";
 import styled from "@emotion/styled";
 import { TrainLine } from "./TrainLine";
+import { LineSelection } from "./LineSelection";
+import { indexBy } from "../../util/index-by";
 
 interface Props {
   game: Game;
   me?: Player;
   highlightedNodes: string[];
   players: Player[];
+  selectedLine?: LineSelection;
+
+  onLineSelected(line: Line, lineNo: number, colorIdx: number): void;
 }
 
 const BoardBackground = styled.div<{ game: Game; me?: Player }>(
@@ -33,14 +38,19 @@ const BoardBackground = styled.div<{ game: Game; me?: Player }>(
   })
 );
 
-export function GameBoard({ game, me, highlightedNodes, players }: Props) {
+export function GameBoard({
+  game,
+  me,
+  highlightedNodes,
+  players,
+  selectedLine,
+  onLineSelected,
+}: Props) {
   const [mapSettings, setMapSettings] = useState(DEFAULT_MAP_SETTINGS);
 
   if (!game.map) return null;
 
-  const playerColors = Object.fromEntries(
-    players.map((player) => [player.name, player.color])
-  );
+  const playerdex = indexBy(players, "name");
 
   const map = game.map;
 
@@ -153,12 +163,13 @@ export function GameBoard({ game, me, highlightedNodes, players }: Props) {
           <TrainLine
             game={game}
             me={me}
-            playerColors={playerColors}
+            players={playerdex}
             line={line}
             lineNo={lineNo}
             color={color}
             colorIdx={colorIdx}
             key={lineNo * 2 + colorIdx}
+            onLineSelected={onLineSelected}
           />
         ))
       )}
@@ -166,6 +177,10 @@ export function GameBoard({ game, me, highlightedNodes, players }: Props) {
         <City
           destination={destination}
           isHighlighted={highlightedNodes.includes(destination.name)}
+          isSelected={
+            destination.name === selectedLine?.line.start ||
+            destination.name === selectedLine?.line.end
+          }
           key={destination.name}
         />
       ))}

@@ -11,6 +11,7 @@ import { runGameAction } from "util/run-game-action";
 import { dijkstra } from "graphology-shortest-path";
 import { docRef } from "init/firebase";
 import { getMapGraph, getOwnedLines } from "util/lines";
+import { range } from "util/range";
 
 interface Props {
   players: Player[];
@@ -61,25 +62,23 @@ export function Scoreboard({ players, game }: Props) {
                       </td>
                       <td css={{ padding: "8px 16px 8px 0" }}>{player.name}</td>
                       <td css={{ padding: "8px 16px" }}>
-                        {[...Array(Math.ceil(lines.length / 3)).keys()].map(
-                          (group) => (
-                            <Stack>
-                              {lines
-                                .slice(group * 3, group * 3 + 3)
-                                .map(([lineCount, number]) => (
-                                  <Flex css={{ alignItems: "center" }}>
-                                    <span css={{ margin: "0 4px" }}>
-                                      {number} x
-                                    </span>
-                                    <LineLengthIcon
-                                      color={player.color}
-                                      length={Number(lineCount)}
-                                    />{" "}
-                                  </Flex>
-                                ))}
-                            </Stack>
-                          )
-                        )}
+                        {range(Math.ceil(lines.length / 3)).map((group) => (
+                          <Stack>
+                            {lines
+                              .slice(group * 3, group * 3 + 3)
+                              .map(([lineCount, number]) => (
+                                <Flex css={{ alignItems: "center" }}>
+                                  <span css={{ margin: "0 4px" }}>
+                                    {number} x
+                                  </span>
+                                  <LineLengthIcon
+                                    color={player.color}
+                                    length={Number(lineCount)}
+                                  />{" "}
+                                </Flex>
+                              ))}
+                          </Stack>
+                        ))}
                       </td>
                       <td css={{ padding: "8px 16px" }}>
                         <Flex>
