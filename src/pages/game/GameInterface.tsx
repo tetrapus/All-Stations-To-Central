@@ -32,6 +32,7 @@ import { Breakpoint } from "atoms/Breakpoint";
  * TODO:
  *
  * Leave mid-game
+ * Name changes
  * Train Count Selection / Balancing
  * Rich Event Feed
  * Sounds
