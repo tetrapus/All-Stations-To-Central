@@ -2,7 +2,6 @@ import { Stack } from "atoms/Stack";
 import React from "react";
 import { TextButton } from "atoms/TextButton";
 import { TextInput } from "atoms/TextInput";
-import stations from "data/stations.json";
 import { useHistory } from "react-router";
 import { useLocalStorage } from "@rehooks/local-storage";
 import { runTransaction, Timestamp } from "@firebase/firestore";
@@ -11,12 +10,15 @@ import { DEFAULT_MAP_SETTINGS, Game } from "data/Game";
 import { Player } from "../data/Game";
 import { generateColor } from "../util/colorgen";
 import { generateMap } from "util/mapgen";
+import { range } from "util/range";
 
 const randomElement = (array: any[]) =>
   array[Math.floor(Math.random() * array.length)];
 
 function generateCode() {
-  return `${randomElement(stations).code}-${randomElement(stations).code}`;
+  return `${range(3).map(() =>
+    randomElement([..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"])
+  )}-${range(3).map(() => randomElement([..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"]))}`;
 }
 
 export function Homepage() {
