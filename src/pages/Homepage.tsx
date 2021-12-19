@@ -43,7 +43,7 @@ export function Homepage() {
                 playerCount: 1,
                 readyCount: 0,
                 removedPlayers: [],
-                moveTimer: 180,
+                moveTimer: 120,
                 boardState: {
                   carriages: {
                     deck: [],

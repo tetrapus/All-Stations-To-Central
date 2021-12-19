@@ -172,6 +172,7 @@ export interface Game {
   boardState: BoardState;
   finalTurn?: number;
   moveTimer?: number;
+  lastMove?: number;
   scored?: boolean;
 }
 // todo
