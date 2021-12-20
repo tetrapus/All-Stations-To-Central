@@ -116,7 +116,7 @@ export function Scoreboard({ players, game }: Props) {
                         routes: {} as { [key: number]: number },
                         lines: {} as { [key: number]: number },
                         bonuses: {},
-                        stations: 0,
+                        stations: 4 * player.stationCount,
                         total: 0,
                       };
                       // Calculate lines score

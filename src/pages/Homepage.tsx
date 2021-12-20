@@ -59,6 +59,7 @@ export function Homepage() {
                     discard: [],
                   },
                   lines: {},
+                  stations: {},
                 },
                 map: generateMap(DEFAULT_MAP_SETTINGS),
               };

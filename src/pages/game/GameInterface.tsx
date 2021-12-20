@@ -27,7 +27,7 @@ import { RouteCard } from "./RouteCard";
 import { LineSelection } from "./LineSelection";
 import { GameEventConverter } from "data/GameEvent";
 import { Breakpoint } from "atoms/Breakpoint";
-import { runPlayerAction } from "util/run-game-action";
+import { runGameAction, runPlayerAction } from "util/run-game-action";
 import { getNextTurn } from "util/next-turn";
 
 /**
@@ -37,6 +37,11 @@ import { getNextTurn } from "util/next-turn";
  *  - Globetrotter: Most Destination Cards
  *  - European Express (Cross-Country): Longest Path
  * Stations
+ *  - Add cardbar support
+ *  - Add station selector and indicator
+ *  - [x] Add player stats support
+ *  - [x] Add to scoring breakdown
+ *  - Add to default start conditions
  * Rainbow Refresh Rule
  * Rich Event Feed
  * Sounds
@@ -100,8 +105,14 @@ export function GameInterface() {
     if (!selectedLine || !game) return;
 
     if (
+      selectedLine.type === "line" &&
       game.boardState.lines[selectedLine.lineNo]?.[selectedLine.colorNo] !==
-      undefined
+        undefined
+    ) {
+      setSelectedLine(undefined);
+    } else if (
+      selectedLine.type === "station" &&
+      game.boardState.stations[selectedLine.city] !== undefined
     ) {
       setSelectedLine(undefined);
     }
@@ -161,7 +172,13 @@ export function GameInterface() {
             highlightedNodes={highlightedNodes}
             players={players}
             onLineSelected={(line, lineNo, colorNo) =>
-              setSelectedLine({ line, colorNo, lineNo, selection: [] })
+              setSelectedLine({
+                line,
+                colorNo,
+                lineNo,
+                selection: [],
+                type: "line",
+              })
             }
             selectedLine={selectedLine}
           />
@@ -175,29 +192,30 @@ export function GameInterface() {
                 },
               }}
             >
-              {me?.routeChoices ? (
-                <Stack css={{ background: "pink" }}>
-                  <div
-                    css={{
-                      fontSize: 13,
-                      fontWeight: "bold",
-                      padding: 4,
-                      textAlign: "center",
-                    }}
-                  >
-                    Discard up to{" "}
-                    {me.routeChoices.routes.length - me.routeChoices.keepMin}
-                  </div>
-                  <RouteChoices
-                    routes={me.routeChoices.routes}
-                    maxDiscard={
-                      me.routeChoices.routes.length - me.routeChoices.keepMin
-                    }
-                    game={game}
-                    me={me}
-                  />
-                </Stack>
-              ) : null}
+              {me?.routeChoices &&
+                !(game.finalTurn && game.finalTurn < game.turn) && (
+                  <Stack css={{ background: "pink" }}>
+                    <div
+                      css={{
+                        fontSize: 13,
+                        fontWeight: "bold",
+                        padding: 4,
+                        textAlign: "center",
+                      }}
+                    >
+                      Discard up to{" "}
+                      {me.routeChoices.routes.length - me.routeChoices.keepMin}
+                    </div>
+                    <RouteChoices
+                      routes={me.routeChoices.routes}
+                      maxDiscard={
+                        me.routeChoices.routes.length - me.routeChoices.keepMin
+                      }
+                      game={game}
+                      me={me}
+                    />
+                  </Stack>
+                )}
               {me?.routes.map((route, idx) => (
                 <RouteCard
                   route={route}
@@ -228,58 +246,74 @@ export function GameInterface() {
                 </div>
               ))}
             </Stack>
-            {me && game.isStarted && (
-              <Stack css={{ margin: "8px 4px" }}>
-                <TextButton
-                  css={{ fontSize: 14, margin: "auto" }}
-                  onClick={() => {
-                    runPlayerAction(
-                      game,
-                      me,
-                      async ({ game, me, transaction }) => {
-                        if (game.removedPlayers.includes(me.order)) {
-                          return;
-                        }
-                        let gameUpdates: Partial<
-                          Omit<Game, "turnStart"> & { turnStart: FieldValue }
-                        > & { removedPlayers: number[] } = {
-                          removedPlayers: [...game.removedPlayers, me.order],
-                        };
-                        let playerUpdates: Partial<Player> = {};
-                        // Am I ready?
-                        if (!me.isReady) {
-                          gameUpdates.readyCount = game.readyCount + 1;
-                          playerUpdates.isReady = true;
-                        }
-                        // Is it my turn?
-                        if (game.turn % game.playerCount === me.order) {
-                          gameUpdates = {
-                            ...gameUpdates,
-                            ...getNextTurn(game, true),
+            {me &&
+              game.isStarted &&
+              !(game.finalTurn && game.finalTurn < game.turn) && (
+                <Flex css={{ margin: "8px 4px" }}>
+                  <TextButton
+                    css={{ fontSize: 14, margin: "auto" }}
+                    onClick={() => {
+                      runPlayerAction(
+                        game,
+                        me,
+                        async ({ game, me, transaction }) => {
+                          if (game.removedPlayers.includes(me.order)) {
+                            return;
+                          }
+                          let gameUpdates: Partial<
+                            Omit<Game, "turnStart"> & { turnStart: FieldValue }
+                          > & { removedPlayers: number[] } = {
+                            removedPlayers: [...game.removedPlayers, me.order],
                           };
+                          let playerUpdates: Partial<Player> = {};
+                          // Am I ready?
+                          if (!me.isReady) {
+                            gameUpdates.readyCount = game.readyCount + 1;
+                            playerUpdates.isReady = true;
+                          }
+                          // Is it my turn?
+                          if (game.turn % game.playerCount === me.order) {
+                            gameUpdates = {
+                              ...gameUpdates,
+                              ...getNextTurn(game, true),
+                            };
+                          }
+                          // Am I the last player?
+                          if (
+                            gameUpdates.removedPlayers.length >=
+                            game.playerCount
+                          ) {
+                            gameUpdates.finalTurn = game.turn - 1;
+                          }
+                          await transaction.update(
+                            docRef("games", game.id),
+                            gameUpdates
+                          );
+                          await transaction.update(
+                            docRef("games", game.id, "players", me.name),
+                            playerUpdates
+                          );
                         }
-                        // Am I the last player?
-                        if (
-                          gameUpdates.removedPlayers.length >= game.playerCount
-                        ) {
-                          gameUpdates.finalTurn = game.turn - 1;
-                        }
-                        await transaction.update(
-                          docRef("games", game.id),
-                          gameUpdates
-                        );
-                        await transaction.update(
-                          docRef("games", game.id, "players", me.name),
-                          playerUpdates
-                        );
-                      }
-                    );
-                  }}
-                >
-                  Leave Game
-                </TextButton>
-              </Stack>
-            )}
+                      );
+                    }}
+                  >
+                    Leave
+                  </TextButton>
+                  <TextButton
+                    css={{ fontSize: 14, margin: "auto" }}
+                    onClick={() => {
+                      runGameAction(game, async ({ game, transaction }) => {
+                        transaction.update(docRef("games", game.id), {
+                          finalTurn: game.turn - 1,
+                          isReady: true,
+                        });
+                      });
+                    }}
+                  >
+                    End Game
+                  </TextButton>
+                </Flex>
+              )}
           </Stack>
         </Flex>
       </Stack>

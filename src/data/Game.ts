@@ -86,10 +86,11 @@ export interface Card {
   color: TrainColor;
 }
 
+type BonusType = "globetrotter" | "cross-country";
+
 export interface Bonus {
-  name: string;
+  name: BonusType;
   points: number;
-  criteria: (a: any, b: any) => number; // todo
 }
 
 export interface GameMap {
@@ -151,9 +152,12 @@ export interface BoardState {
     discard: Card[];
   };
   lines: {
-    [lineno: number]: {
-      [trackno: number]: number;
+    [lineNo: number]: {
+      [trackNo: number]: number;
     };
+  };
+  stations: {
+    [destinationNo: number]: number;
   };
 }
 

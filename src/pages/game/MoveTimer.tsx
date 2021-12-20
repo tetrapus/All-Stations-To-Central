@@ -23,7 +23,8 @@ export function MoveTimer({ game, me, playerNo }: Props) {
       game.turnStart &&
       me &&
       playerNo === me.order &&
-      game.turn % game.playerCount === me.order
+      game.turn % game.playerCount === me.order &&
+      !(game.finalTurn && game.finalTurn < game.turn)
     ) {
       const timeout = setTimeout(() => {
         runPlayerAction(
@@ -74,7 +75,8 @@ export function MoveTimer({ game, me, playerNo }: Props) {
     !game ||
     !game.moveTimer ||
     !game.turnStart ||
-    game.turn % game.playerCount !== playerNo
+    game.turn % game.playerCount !== playerNo ||
+    (game.finalTurn && game.finalTurn < game.turn)
   ) {
     return null;
   }

@@ -20,6 +20,6 @@ export function getNextTurn(
       (!game.lastMove || game.lastMove > turn - game.playerCount)
         ? serverTimestamp()
         : deleteField(),
-    lastMove: isSkip ? game.lastMove : game.turn,
+    lastMove: isSkip && game.lastMove ? game.lastMove : game.turn,
   };
 }

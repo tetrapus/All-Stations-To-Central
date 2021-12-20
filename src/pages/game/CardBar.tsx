@@ -134,13 +134,19 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
   }
 
   const lineColor = selectedLine
-    ? selectedLine.line.color[selectedLine.colorNo]
+    ? selectedLine.type === "line"
+      ? selectedLine.line.color[selectedLine.colorNo]
+      : "rainbow"
     : undefined;
   const requiredColor = selectedLine
     ? lineColor === "rainbow"
       ? selectedLine.selection.find((selection) => selection !== "rainbow")
       : lineColor
     : undefined;
+
+  if (selectedLine && selectedLine.type === "station") {
+    return null; // todo
+  }
 
   const getUnselectedCardCounts = (me: Player, selection?: string[]) =>
     sortBy(

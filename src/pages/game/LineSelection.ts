@@ -1,8 +1,11 @@
 import { Line, TrainColor } from "data/Game";
 
-export interface LineSelection {
-  line: Line;
-  lineNo: number;
-  colorNo: number;
-  selection: TrainColor[];
-}
+export type LineSelection = (
+  | {
+      type: "line";
+      line: Line;
+      lineNo: number;
+      colorNo: number;
+    }
+  | { type: "station"; city: number }
+) & { selection: TrainColor[] };

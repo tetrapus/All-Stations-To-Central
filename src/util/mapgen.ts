@@ -357,6 +357,10 @@ export function generateMap(mapSettings: MapSettings): GameMap {
         end: candidateRoute.end.name,
         points: 0,
       });
+      if (length >= 30) {
+        // Get rid of any megaroutes
+        continue;
+      }
       map.routes.push({
         start: candidateRoute.start.name,
         end: candidateRoute.end.name,

@@ -199,13 +199,16 @@ export function GameBoard({
                 />
               ))
             )}
-            {map?.destinations.map((destination) => (
+            {map?.destinations.map((destination, idx) => (
               <City
                 destination={destination}
                 isHighlighted={highlightedNodes.includes(destination.name)}
                 isSelected={
-                  destination.name === selectedLine?.line.start ||
-                  destination.name === selectedLine?.line.end
+                  (selectedLine?.type === "line" &&
+                    (destination.name === selectedLine?.line.start ||
+                      destination.name === selectedLine?.line.end)) ||
+                  (selectedLine?.type === "station" &&
+                    selectedLine.city === idx)
                 }
                 key={destination.name}
               />
