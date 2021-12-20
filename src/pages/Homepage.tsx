@@ -17,8 +17,10 @@ const randomElement = (array: any[]) =>
 
 function generateCode() {
   return `${range(3).map(() =>
-    randomElement([..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"])
-  )}-${range(3).map(() => randomElement([..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"]))}`;
+    randomElement([..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"]).join("")
+  )}-${range(3)
+    .map(() => randomElement([..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"]))
+    .join("")}`;
 }
 
 export function Homepage() {
