@@ -152,7 +152,7 @@ export interface BoardState {
   };
   lines: {
     [lineno: number]: {
-      [trackno: number]: string;
+      [trackno: number]: number;
     };
   };
 }
@@ -182,7 +182,7 @@ export const GameConverter: FirestoreDataConverter<Game> = {
 };
 
 export const DEFAULT_MAP_SETTINGS = {
-  cities: 60,
+  cities: 50,
   connectivity: 3.5,
   routes: 46,
   ferries: 0,

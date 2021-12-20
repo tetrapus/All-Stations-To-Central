@@ -93,8 +93,8 @@ export function MoveTimer({ game, me, playerNo }: Props) {
     <div
       css={{
         position: "absolute",
-        top: 2,
-        right: 4,
+        top: 0,
+        left: 2,
         fontSize: 12,
       }}
     >

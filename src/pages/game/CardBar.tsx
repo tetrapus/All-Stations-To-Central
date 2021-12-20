@@ -28,7 +28,7 @@ import { LocomotiveCard } from "./LocomotiveCard";
 import { RouteCard } from "./RouteCard";
 
 interface Props {
-  me: Player;
+  me?: Player;
   game: Game;
   selectedLine?: LineSelection;
   setSelectedLine(selectedLine?: LineSelection): void;
@@ -219,7 +219,7 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
           : null}
       </Flex>
       <Flex>
-        {selectedLine && (
+        {selectedLine && me && (
           <Stack css={{ margin: "auto", alignItems: "center" }}>
             <Flex css={{ margin: "auto" }}>
               {range(
@@ -389,7 +389,7 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
 
                     await transaction.update(docRef("games", game.id), {
                       [`boardState.lines.${selectedLine.lineNo}.${selectedLine.colorNo}`]:
-                        me.name,
+                        me.order,
                       "boardState.carriages.discard":
                         game.boardState.carriages.discard,
                       ...getNextTurn(game),
@@ -461,12 +461,16 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
             key={idx}
             color={card.color}
             clickable={
+              me &&
               (game.turnState === "choose" ||
                 (game.turnState === "drawn" && card.color === "rainbow")) &&
               game.isReady &&
               isCurrentPlayer(game, me)
             }
             onClick={() => {
+              if (!me) {
+                return;
+              }
               runPlayerAction(game, me, async ({ game, me, transaction }) => {
                 if (
                   isCurrentPlayer(game, me) &&
@@ -523,11 +527,15 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
         <LocomotiveCard
           count={game.boardState.carriages.deck.length}
           clickable={
+            me &&
             (game.turnState === "choose" || game.turnState === "drawn") &&
             game.isReady &&
             isCurrentPlayer(game, me)
           }
           onClick={() => {
+            if (!me) {
+              return;
+            }
             runPlayerAction(game, me, async ({ game, me, transaction }) => {
               if (
                 isCurrentPlayer(game, me) &&
@@ -575,9 +583,14 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
         ></LocomotiveCard>
         <RouteCard
           count={game.boardState.routes.deck.length}
-          clickable={isCurrentPlayer(game, me) && game.turnState === "choose"}
+          clickable={
+            me && isCurrentPlayer(game, me) && game.turnState === "choose"
+          }
           map={game.map}
           onClick={() => {
+            if (!me) {
+              return;
+            }
             runPlayerAction(game, me, async ({ game, me, transaction }) => {
               if (isCurrentPlayer(game, me) && game.turnState === "choose") {
                 if (game.boardState.routes.deck.length <= 3) {

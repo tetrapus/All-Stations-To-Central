@@ -110,7 +110,7 @@ const TrainLineContainer = styled(Flex)<{
 interface Props {
   game: Game;
   me?: Player;
-  players: { [name: string]: Player };
+  players: Player[];
   line: Line;
   lineNo: number;
   color: string;
@@ -137,12 +137,10 @@ export function TrainLine({
     (destination) => line.end === destination.name
   );
   if (!start || !end) return null;
-  const owner = game.boardState.lines[lineNo]?.[0];
+  const owner = game.boardState.lines[lineNo]?.[colorIdx];
   const playable = (game: Game, me: Player) => {
     const counts = Object.fromEntries(getCardCounts(me));
     return (
-      // game.turnState === "choose" &&
-      // isCurrentPlayer(game, me) &&
       !owner &&
       line.length <= me.trainCount &&
       (color === "rainbow"

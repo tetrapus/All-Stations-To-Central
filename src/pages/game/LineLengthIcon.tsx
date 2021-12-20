@@ -10,7 +10,7 @@ interface Props {
 }
 
 const LocomotiveIcon = styled.div<{ color: string }>(
-  { height: 6, width: 16, margin: 1 },
+  { height: 4, width: 12, margin: 1 },
   ({ color }) => ({ background: color })
 );
 

@@ -12,9 +12,8 @@ import { isCurrentPlayer } from "util/is-current-player";
 import styled from "@emotion/styled";
 import { TrainLine } from "./TrainLine";
 import { LineSelection } from "./LineSelection";
-import { indexBy } from "../../util/index-by";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import { Breakpoint } from "atoms/Breakpoint";
+import { Breakpoint, BREAKPOINT_MOBILE } from "atoms/Breakpoint";
 
 interface Props {
   game: Game;
@@ -63,24 +62,26 @@ export function GameBoard({
   selectedLine,
   onLineSelected,
 }: Props) {
-  const [mapSettings, setMapSettings] = useState({
-    cities: DEFAULT_MAP_SETTINGS.cities.toString(),
-    connectivity: DEFAULT_MAP_SETTINGS.connectivity.toString(),
-    routes: DEFAULT_MAP_SETTINGS.routes.toString(),
-    size: {
-      width: DEFAULT_MAP_SETTINGS.size.width.toString(),
-      height: DEFAULT_MAP_SETTINGS.size.height.toString(),
-    },
-  });
+  const MAP_DEFAULTS: { [key: string]: string } = {
+    Cities: DEFAULT_MAP_SETTINGS.cities.toString(),
+    Connectivity: DEFAULT_MAP_SETTINGS.connectivity.toString(),
+    Routes: DEFAULT_MAP_SETTINGS.routes.toString(),
+    Width: DEFAULT_MAP_SETTINGS.size.width.toString(),
+    Height: DEFAULT_MAP_SETTINGS.size.height.toString(),
+    //'Min Players': DEFAULT_MAP_SETTINGS.players.min.toString(),
+    "Max Players": DEFAULT_MAP_SETTINGS.players.max.toString(),
+  };
+  const [mapSettings, setMapSettings] = useState(MAP_DEFAULTS);
 
   if (!game.map) return null;
 
-  const playerdex = indexBy(players, "name");
-
   const map = game.map;
   const viewerSize = {
-    x: Math.min(0.85 * window.innerWidth, window.innerWidth - 150),
-    y: window.innerHeight - 220,
+    x:
+      window.innerWidth > BREAKPOINT_MOBILE
+        ? Math.min(0.85 * window.innerWidth, window.innerWidth - 150)
+        : window.innerWidth,
+    y: window.innerHeight - 180,
   };
   const viewerScale = {
     x: viewerSize.x / game.map.size.width,
@@ -122,67 +123,20 @@ export function GameBoard({
           </span>
           {!game.isStarted ? (
             <Flex>
-              <TextInput
-                placeholder="Cities"
-                value={mapSettings.cities}
-                onChange={(e) => {
-                  setMapSettings({
-                    ...mapSettings,
-                    cities: e.currentTarget.value,
-                  });
-                }}
-                css={{ width: 80 }}
-              />
-              <TextInput
-                placeholder="Connectivity"
-                value={mapSettings.connectivity}
-                onChange={(e) => {
-                  setMapSettings({
-                    ...mapSettings,
-                    connectivity: e.currentTarget.value,
-                  });
-                }}
-                css={{ width: 80 }}
-              />
-              <TextInput
-                placeholder="Routes (46)"
-                css={{ width: 80 }}
-                value={mapSettings.routes}
-                onChange={(e) => {
-                  setMapSettings({
-                    ...mapSettings,
-                    routes: e.currentTarget.value,
-                  });
-                }}
-              />
-              <TextInput
-                placeholder="Width (1200)"
-                css={{ width: 80 }}
-                value={mapSettings.size.width}
-                onChange={(e) => {
-                  setMapSettings({
-                    ...mapSettings,
-                    size: {
-                      width: e.currentTarget.value,
-                      height: mapSettings.size.height,
-                    },
-                  });
-                }}
-              />
-              <TextInput
-                placeholder="Height (1200)"
-                css={{ width: 80 }}
-                value={mapSettings.size.height}
-                onChange={(e) => {
-                  setMapSettings({
-                    ...mapSettings,
-                    size: {
-                      height: e.currentTarget.value,
-                      width: mapSettings.size.width,
-                    },
-                  });
-                }}
-              />
+              {Object.entries(MAP_DEFAULTS).map(([label, def]) => (
+                <TextInput
+                  key={label}
+                  placeholder={`${label} (${def})`}
+                  value={mapSettings[label]}
+                  onChange={(e) => {
+                    setMapSettings({
+                      ...mapSettings,
+                      [label]: e.currentTarget.value,
+                    });
+                  }}
+                  css={{ width: 80 }}
+                />
+              ))}
               <TextButton
                 onClick={() => {
                   if (!me) {
@@ -193,12 +147,16 @@ export function GameBoard({
                     me,
                     async ({ game, me, transaction }) => {
                       const newSettings = {
-                        cities: Number(mapSettings.cities),
-                        connectivity: Number(mapSettings.connectivity),
-                        routes: Number(mapSettings.routes),
+                        cities: Number(mapSettings.Cities),
+                        connectivity: Number(mapSettings.Connectivity),
+                        routes: Number(mapSettings.Routes),
                         size: {
-                          width: Number(mapSettings.size.width),
-                          height: Number(mapSettings.size.height),
+                          width: Number(mapSettings.Width),
+                          height: Number(mapSettings.Height),
+                        },
+                        players: {
+                          min: DEFAULT_MAP_SETTINGS.players.min, // Number(mapSettings.min),
+                          max: Number(mapSettings["Max Players"]),
                         },
                       };
                       transaction.update(docRef("games", game.id), {
@@ -231,7 +189,7 @@ export function GameBoard({
                 <TrainLine
                   game={game}
                   me={me}
-                  players={playerdex}
+                  players={players}
                   line={line}
                   lineNo={lineNo}
                   color={color}

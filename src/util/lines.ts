@@ -14,7 +14,7 @@ export const getOwnedLines = (player: Player, game: Game) => {
   }
   return Object.entries(game.boardState.lines)
     .map(([lineno, owners]) =>
-      Object.values(owners).includes(player.name) ? [lineno] : []
+      Object.values(owners).includes(player.order) ? [lineno] : []
     )
     .flat(1)
     .map((lineno) => map.lines[Number(lineno)]);

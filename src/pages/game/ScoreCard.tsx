@@ -24,7 +24,7 @@ export function ScoreCard({ map }: Props) {
         },
       }}
     >
-      <strong css={{ marginLeft: "auto" }}>Points</strong>
+      <strong css={{ marginLeft: "auto", fontSize: 14 }}>Points</strong>
       <Flex>
         {range(Math.ceil(scores.length / 2)).map((group) => (
           <Stack>
@@ -34,7 +34,7 @@ export function ScoreCard({ map }: Props) {
                   color={"black"}
                   length={Number(length)}
                 ></LineLengthIcon>{" "}
-                <span css={{ margin: "0 4px" }}>{score}</span>{" "}
+                <span css={{ margin: "0 4px", fontSize: 12 }}>{score}</span>{" "}
               </Flex>
             ))}
           </Stack>

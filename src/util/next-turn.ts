@@ -1,7 +1,10 @@
 import { Game } from "data/Game";
-import { deleteField, serverTimestamp } from "firebase/firestore";
+import { deleteField, FieldValue, serverTimestamp } from "firebase/firestore";
 
-export function getNextTurn(game: Game, isSkip?: boolean) {
+export function getNextTurn(
+  game: Game,
+  isSkip?: boolean
+): Partial<Omit<Game, "turnStart"> & { turnStart: FieldValue }> {
   if (game.removedPlayers.length === game.playerCount) {
     throw Error("No players left!");
   }

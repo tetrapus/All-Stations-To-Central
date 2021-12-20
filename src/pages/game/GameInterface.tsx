@@ -7,8 +7,8 @@ import {
 } from "react-firebase-hooks/firestore";
 
 import { collectionRef } from "init/firebase";
-import { GameConverter, PlayerConverter } from "data/Game";
-import { orderBy, query } from "@firebase/firestore";
+import { Game, GameConverter, Player, PlayerConverter } from "data/Game";
+import { FieldValue, orderBy, query } from "@firebase/firestore";
 import useLocalStorage from "@rehooks/local-storage";
 import React, { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router";
@@ -27,15 +27,17 @@ import { RouteCard } from "./RouteCard";
 import { LineSelection } from "./LineSelection";
 import { GameEventConverter } from "data/GameEvent";
 import { Breakpoint } from "atoms/Breakpoint";
+import { runPlayerAction } from "util/run-game-action";
+import { getNextTurn } from "util/next-turn";
 
 /**
  * TODO:
  *
- * Leave mid-game
- * Name changes
+ * Bonus Cards
+ *  - Globetrotter: Most Destination Cards
+ *  - European Express (Cross-Country): Longest Path
  * Stations
  * Rainbow Refresh Rule
- * Train Count Selection / Balancing
  * Rich Event Feed
  * Sounds
  * Map Presets
@@ -43,9 +45,9 @@ import { Breakpoint } from "atoms/Breakpoint";
  * Special Rules
  * Rules Explainer
  * Background Generation
+ * Name changes
  *
  * BUGS
- * Should be able to easily find destinations
  * Prevent claiming both routes for dual route trains
  **/
 
@@ -57,7 +59,10 @@ export function GameInterface() {
   ); // todo: error
 
   const [players, playersLoading] = useCollectionData(
-    collectionRef("games", id, "players").withConverter(PlayerConverter)
+    query(
+      collectionRef("games", id, "players").withConverter(PlayerConverter),
+      orderBy("order")
+    )
   ); // todo: loading
 
   const [events] = useCollectionData(
@@ -94,7 +99,10 @@ export function GameInterface() {
   useEffect(() => {
     if (!selectedLine || !game) return;
 
-    if (game.boardState.lines[selectedLine.lineNo]?.[selectedLine.colorNo]) {
+    if (
+      game.boardState.lines[selectedLine.lineNo]?.[selectedLine.colorNo] !==
+      undefined
+    ) {
       setSelectedLine(undefined);
     }
   }, [game, selectedLine]);
@@ -140,7 +148,7 @@ export function GameInterface() {
         <Flex
           css={{
             flexGrow: 1,
-            maxHeight: "calc(100vh - 74px - 78px - 28px)",
+            maxHeight: "calc(100vh - 74px - 78px)",
             [Breakpoint.MOBILE]: {
               maxHeight: "100vh",
               flexDirection: "column",
@@ -220,6 +228,58 @@ export function GameInterface() {
                 </div>
               ))}
             </Stack>
+            {me && game.isStarted && (
+              <Stack css={{ margin: "8px 4px" }}>
+                <TextButton
+                  css={{ fontSize: 14, margin: "auto" }}
+                  onClick={() => {
+                    runPlayerAction(
+                      game,
+                      me,
+                      async ({ game, me, transaction }) => {
+                        if (game.removedPlayers.includes(me.order)) {
+                          return;
+                        }
+                        let gameUpdates: Partial<
+                          Omit<Game, "turnStart"> & { turnStart: FieldValue }
+                        > & { removedPlayers: number[] } = {
+                          removedPlayers: [...game.removedPlayers, me.order],
+                        };
+                        let playerUpdates: Partial<Player> = {};
+                        // Am I ready?
+                        if (!me.isReady) {
+                          gameUpdates.readyCount = game.readyCount + 1;
+                          playerUpdates.isReady = true;
+                        }
+                        // Is it my turn?
+                        if (game.turn % game.playerCount === me.order) {
+                          gameUpdates = {
+                            ...gameUpdates,
+                            ...getNextTurn(game, true),
+                          };
+                        }
+                        // Am I the last player?
+                        if (
+                          gameUpdates.removedPlayers.length >= game.playerCount
+                        ) {
+                          gameUpdates.finalTurn = game.turn - 1;
+                        }
+                        await transaction.update(
+                          docRef("games", game.id),
+                          gameUpdates
+                        );
+                        await transaction.update(
+                          docRef("games", game.id, "players", me.name),
+                          playerUpdates
+                        );
+                      }
+                    );
+                  }}
+                >
+                  Leave Game
+                </TextButton>
+              </Stack>
+            )}
           </Stack>
         </Flex>
       </Stack>

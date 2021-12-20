@@ -96,7 +96,7 @@ export function generateMap(mapSettings: MapSettings): GameMap {
     background: "", // todo
     destinations: [],
     lines: [],
-    routes: [], // todo
+    routes: [],
     deck: {
       red: 12,
       orange: 12,
@@ -110,7 +110,7 @@ export function generateMap(mapSettings: MapSettings): GameMap {
     },
     bonuses: [], // todo
     scoringTable: mapSettings.scoringTable,
-    players: mapSettings.players, // todo: balance
+    players: mapSettings.players,
     canMonopolizeLineMin: mapSettings.canMonopolizeLineMin, // todo: balance
     size: mapSettings.size,
   };
@@ -392,16 +392,21 @@ export function generateMap(mapSettings: MapSettings): GameMap {
       oldScores.reduce((a, b) => a + b, 0)
     );
   });
-  sortBy(
+
+  const criticalLines = sortBy(
     map.lines.map((line, idx) => [line, idx] as [Line, number]),
-    ([line, idx]) => lineImportance[idx]
-  )
-    .slice(0, Math.ceil(map.lines.length / 5))
-    .forEach(([line, idx]) => {
-      map.lines[idx].color.push(
-        choose(Object.fromEntries(Object.keys(trainColors).map((e) => [e, 1])))
-      );
-    });
+    ([line, idx]) => -lineImportance[idx]
+  );
+  let lineSum = map.lines
+    .map((line) => line.length * line.color.length)
+    .reduce((a, b) => a + b, 0);
+  while (criticalLines.length && lineSum < 45 * mapSettings.players.max) {
+    const [line, idx] = criticalLines.pop() as [Line, number];
+    lineSum += line.length;
+    map.lines[idx].color.push(
+      choose(Object.fromEntries(Object.keys(trainColors).map((e) => [e, 1])))
+    );
+  }
 
   return map;
 }

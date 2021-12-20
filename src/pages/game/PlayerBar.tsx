@@ -34,9 +34,10 @@ export function PlayerBar({ players, game, username }: Props) {
         [Breakpoint.MOBILE]: {
           flexDirection: "column-reverse",
         },
+        maxWidth: "100vw",
       }}
     >
-      <Flex css={{ marginRight: "auto", overflow: "scroll" }}>
+      <Flex css={{ marginRight: "auto", overflow: "scroll", maxWidth: "100%" }}>
         {players?.map((player) => {
           return (
             <Flex
@@ -53,11 +54,13 @@ export function PlayerBar({ players, game, username }: Props) {
                     ? "white"
                     : "transparent",
                 opacity:
-                  game.finalTurn &&
-                  currentPlayer &&
-                  (game.turn - currentPlayer.order + player.order < game.turn ||
-                    game.turn - currentPlayer.order + player.order >
-                      game.finalTurn)
+                  (game.finalTurn &&
+                    currentPlayer &&
+                    (game.turn - currentPlayer.order + player.order <
+                      game.turn ||
+                      game.turn - currentPlayer.order + player.order >
+                        game.finalTurn)) ||
+                  game.removedPlayers.includes(player.order)
                     ? 0.3
                     : 1,
               }}
@@ -65,7 +68,7 @@ export function PlayerBar({ players, game, username }: Props) {
             >
               <Flex
                 css={{
-                  margin: "12px 16px",
+                  margin: "8px 12px",
                   alignItems: "center",
                 }}
               >
@@ -77,7 +80,7 @@ export function PlayerBar({ players, game, username }: Props) {
                 <Flex
                   css={{
                     alignItems: "center",
-                    fontWeight: player.name === username ? "bold" : "normal",
+                    fontWeight: player.name === me?.name ? "bold" : "normal",
                     fontStyle: player.isReady ? "normal" : "italic",
                     marginRight: 8,
                   }}

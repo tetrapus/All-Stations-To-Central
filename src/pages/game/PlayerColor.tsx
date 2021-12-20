@@ -11,7 +11,7 @@ const PlayerColorBox = styled.div<Props>(
     height: 16,
     width: 16,
     border: "1px solid black",
-    margin: "4px 8px",
+    margin: "4px 8px 4px 0",
   },
   ({ player }) => ({ background: player.color })
 );
