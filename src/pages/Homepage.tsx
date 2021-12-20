@@ -16,9 +16,9 @@ const randomElement = (array: any[]) =>
   array[Math.floor(Math.random() * array.length)];
 
 function generateCode() {
-  return `${range(3).map(() =>
-    randomElement([..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"]).join("")
-  )}-${range(3)
+  return `${range(3)
+    .map(() => randomElement([..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"]))
+    .join("")}-${range(3)
     .map(() => randomElement([..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"]))
     .join("")}`;
 }

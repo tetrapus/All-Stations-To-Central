@@ -78,12 +78,27 @@ export function GameBoard({
   const playerdex = indexBy(players, "name");
 
   const map = game.map;
-
+  const viewerSize = {
+    x: Math.min(0.85 * window.innerWidth, window.innerWidth - 150),
+    y: window.innerHeight - 220,
+  };
+  const viewerScale = {
+    x: viewerSize.x / game.map.size.width,
+    y: viewerSize.y / game.map.size.height,
+  };
   return (
     <TransformWrapper
-      initialPositionX={0}
-      initialPositionY={0}
-      initialScale={1}
+      initialPositionX={
+        viewerScale.x > viewerScale.y
+          ? (game.map.size.width - viewerSize.x) / 2
+          : 0
+      }
+      initialPositionY={
+        viewerScale.y > viewerScale.x
+          ? (game.map.size.height - viewerSize.y) / 2
+          : 0
+      }
+      initialScale={Math.min(viewerScale.x, viewerScale.y)}
       limitToBounds={false}
       minScale={0.1}
       wheel={{

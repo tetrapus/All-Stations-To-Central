@@ -200,7 +200,7 @@ export const DEFAULT_MAP_SETTINGS = {
     9: 27,
   },
   size: {
-    height: 1200,
-    width: 1200,
+    height: 800,
+    width: 1400,
   },
 };

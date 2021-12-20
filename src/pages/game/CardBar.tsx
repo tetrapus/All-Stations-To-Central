@@ -461,7 +461,8 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
             key={idx}
             color={card.color}
             clickable={
-              (game.turnState === "choose" || game.turnState === "drawn") &&
+              (game.turnState === "choose" ||
+                (game.turnState === "drawn" && card.color === "rainbow")) &&
               game.isReady &&
               isCurrentPlayer(game, me)
             }
@@ -469,7 +470,8 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
               runPlayerAction(game, me, async ({ game, me, transaction }) => {
                 if (
                   isCurrentPlayer(game, me) &&
-                  (game?.turnState === "choose" || game?.turnState === "drawn")
+                  (game?.turnState === "choose" ||
+                    (game?.turnState === "drawn" && card.color !== "rainbow"))
                 ) {
                   const newCard = game.boardState.carriages.deck.pop();
                   if (!newCard) {
