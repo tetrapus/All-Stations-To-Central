@@ -80,12 +80,13 @@ const CityRing = styled.div<{
     boxShadow: "0 0 0 0 rgba(255, 255, 255, 1)",
   },
   ({ isHighlighted, isSelected, isAdjacent }) => ({
-    border:
-      isHighlighted || isAdjacent
-        ? "3px solid lightgreen"
-        : isSelected
-        ? "3px solid white"
-        : undefined,
+    border: isAdjacent
+      ? "3px solid deepskyblue"
+      : isHighlighted
+      ? "3px solid lightgreen"
+      : isSelected
+      ? "3px solid white"
+      : undefined,
     animation:
       isHighlighted || isSelected || isAdjacent
         ? `${whitePulse} 2s infinite`

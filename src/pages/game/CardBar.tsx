@@ -414,8 +414,8 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
                   <BuildButton
                     disabled={
                       !game.isReady ||
-                      (selectedLine.selection.length < requiredCount &&
-                        isCurrentPlayer(game, me))
+                      selectedLine.selection.length < requiredCount ||
+                      !isCurrentPlayer(game, me)
                     }
                     onClick={async () => {
                       await runPlayerAction(
@@ -499,9 +499,11 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
                                 };
                           // Apply manually onto `game` as well for other calculations
                           if (selectedLine.type === "line") {
-                            game.boardState.lines[selectedLine.lineNo][
-                              selectedLine.colorNo
-                            ] = me.order;
+                            game.boardState.lines[selectedLine.lineNo] = {
+                              ...(game.boardState.lines[selectedLine.lineNo] ||
+                                {}),
+                              [selectedLine.colorNo]: me.order,
+                            };
                           } else {
                             game.boardState.stations.owners[selectedLine.city] =
                               me.order;

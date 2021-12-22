@@ -49,6 +49,7 @@ import { getNextTurn } from "util/next-turn";
  *
  * BUGS
  * Prevent claiming both routes for dual route trains
+ * movetimer randomly breaks? maybe to do with removed players
  **/
 
 export function GameInterface() {
@@ -79,18 +80,23 @@ export function GameInterface() {
   const onHighlight = useCallback(
     (route?: Route) => {
       if (!route) return;
-      setHighlightedNodes([route.start, route.end]);
+      setHighlightedNodes([...highlightedNodes, route.start, route.end]);
     },
-    [setHighlightedNodes]
+    [highlightedNodes]
   );
 
   const onUnhighlight = useCallback(
     (route?: Route) => {
       if (!route) return;
-
-      setHighlightedNodes([]);
+      const toRemove = [
+        highlightedNodes.indexOf(route.start),
+        highlightedNodes.indexOf(route.end),
+      ];
+      setHighlightedNodes(
+        highlightedNodes.filter((node, idx) => !toRemove.includes(idx))
+      );
     },
-    [setHighlightedNodes]
+    [highlightedNodes]
   );
 
   const [selectedLine, setSelectedLine] = useState<LineSelection | undefined>();
@@ -234,73 +240,73 @@ export function GameInterface() {
               ))}
             </Stack>
             {me &&
-              game.isStarted &&
-              !(game.finalTurn && game.finalTurn < game.turn) && (
-                <Flex css={{ margin: "8px 4px" }}>
-                  <TextButton
-                    css={{ fontSize: 14, margin: "auto" }}
-                    onClick={() => {
-                      runPlayerAction(
-                        game,
-                        me,
-                        async ({ game, me, transaction }) => {
-                          if (game.removedPlayers.includes(me.order)) {
-                            return;
-                          }
-                          let gameUpdates: Partial<
-                            Omit<Game, "turnStart"> & { turnStart: FieldValue }
-                          > & { removedPlayers: number[] } = {
-                            removedPlayers: [...game.removedPlayers, me.order],
-                          };
-                          let playerUpdates: Partial<Player> = {};
-                          // Am I ready?
-                          if (!me.isReady) {
-                            gameUpdates.readyCount = game.readyCount + 1;
-                            playerUpdates.isReady = true;
-                          }
-                          // Is it my turn?
-                          if (game.turn % game.playerCount === me.order) {
-                            gameUpdates = {
-                              ...gameUpdates,
-                              ...getNextTurn(game, true),
-                            };
-                          }
-                          // Am I the last player?
-                          if (
-                            gameUpdates.removedPlayers.length >=
-                            game.playerCount
-                          ) {
-                            gameUpdates.finalTurn = game.turn - 1;
-                          }
-                          await transaction.update(
-                            docRef("games", game.id),
-                            gameUpdates
-                          );
-                          await transaction.update(
-                            docRef("games", game.id, "players", me.name),
-                            playerUpdates
-                          );
+            game.isStarted &&
+            !(game.finalTurn && game.finalTurn < game.turn) &&
+            !game.removedPlayers.includes(me.order) ? (
+              <Flex css={{ margin: "8px 4px" }}>
+                <TextButton
+                  css={{ fontSize: 14, margin: "auto" }}
+                  onClick={() => {
+                    runPlayerAction(
+                      game,
+                      me,
+                      async ({ game, me, transaction }) => {
+                        if (game.removedPlayers.includes(me.order)) {
+                          return;
                         }
-                      );
-                    }}
-                  >
-                    Leave
-                  </TextButton>
-                  <TextButton
-                    css={{ fontSize: 14, margin: "auto" }}
-                    onClick={() => {
-                      runGameAction(game, async ({ game, transaction }) => {
-                        transaction.update(docRef("games", game.id), {
-                          finalTurn: game.turn - 1,
-                          isReady: true,
-                        });
+                        let gameUpdates: Partial<
+                          Omit<Game, "turnStart"> & { turnStart: FieldValue }
+                        > & { removedPlayers: number[] } = {
+                          removedPlayers: [...game.removedPlayers, me.order],
+                        };
+                        let playerUpdates: Partial<Player> = {};
+                        // Am I ready?
+                        if (!me.isReady) {
+                          gameUpdates.readyCount = game.readyCount + 1;
+                          playerUpdates.isReady = true;
+                        }
+                        // Is it my turn?
+                        if (game.turn % game.playerCount === me.order) {
+                          gameUpdates = {
+                            ...gameUpdates,
+                            ...getNextTurn(game, true),
+                          };
+                        }
+                        // Am I the last player?
+                        if (
+                          gameUpdates.removedPlayers.length >= game.playerCount
+                        ) {
+                          gameUpdates.finalTurn = game.turn - 1;
+                        }
+                        await transaction.update(
+                          docRef("games", game.id),
+                          gameUpdates
+                        );
+                        await transaction.update(
+                          docRef("games", game.id, "players", me.name),
+                          playerUpdates
+                        );
+                      }
+                    );
+                  }}
+                >
+                  Leave
+                </TextButton>
+                <TextButton
+                  css={{ fontSize: 14, margin: "auto" }}
+                  onClick={() => {
+                    runGameAction(game, async ({ game, transaction }) => {
+                      transaction.update(docRef("games", game.id), {
+                        finalTurn: game.turn - 1,
+                        isReady: true,
                       });
-                    }}
-                  >
-                    End Game
-                  </TextButton>
-                </Flex>
-              )}
+                    });
+                  }}
+                >
+                  End Game
+                </TextButton>
+              </Flex>
+            ) : undefined}
           </Stack>
         </Flex>
       </Stack>

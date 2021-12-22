@@ -48,17 +48,21 @@ export const RouteCard = ({ count, route, clickable, map, onClick }: Props) => {
         textAlign: "center",
         fontSize: 12,
         margin: 4,
-        cursor: clickable ? "pointer" : undefined,
+        cursor: clickable || route ? "pointer" : undefined,
       }}
-      onClick={onClick}
-      onMouseEnter={() => {
-        setHighlighted(true);
-        onHighlight?.(route);
-      }}
-      onMouseLeave={() => {
-        setHighlighted(false);
-        onUnhighlight?.(route);
-      }}
+      onClick={
+        onClick
+          ? onClick
+          : () => {
+              if (highlighted) {
+                setHighlighted(false);
+                onUnhighlight?.(route);
+              } else {
+                setHighlighted(true);
+                onHighlight?.(route);
+              }
+            }
+      }
     >
       <Flex>{ends ? ends[1] : null}</Flex>
       <Flex

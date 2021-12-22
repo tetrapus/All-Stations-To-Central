@@ -7,13 +7,14 @@ import { doc, serverTimestamp } from "firebase/firestore";
 import { docRef, collectionRef } from "init/firebase";
 import { generateMap } from "util/mapgen";
 import { City } from "./City";
-import { runGameAction, runPlayerAction } from "util/run-game-action";
+import { runPlayerAction } from "util/run-game-action";
 import { isCurrentPlayer } from "util/is-current-player";
 import styled from "@emotion/styled";
 import { TrainLine } from "./TrainLine";
 import { LineSelection } from "./LineSelection";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { Breakpoint, BREAKPOINT_MOBILE } from "atoms/Breakpoint";
+import { updateRouteStates } from "../../util/update-route-states";
 
 interface Props {
   game: Game;
@@ -284,12 +285,32 @@ export function GameBoard({
                       }
                       if (isAdjacent) {
                         if (selectedLine.type === "station") {
-                          runGameAction(game, async ({ game, transaction }) => {
-                            transaction.update(docRef("games", game.id), {
-                              [`boardState.stations.lines.${selectedLine.city}.${me.order}`]:
-                                idx,
-                            });
-                          }).then(() => {
+                          runPlayerAction(
+                            game,
+                            me,
+                            async ({ game, me, transaction }) => {
+                              game.boardState.stations.lines[
+                                selectedLine.city
+                              ] = {
+                                ...(game.boardState.stations.lines[
+                                  selectedLine.city
+                                ] || {}),
+
+                                [me.order]: idx,
+                              };
+                              transaction.update(docRef("games", game.id), {
+                                [`boardState.stations.lines.${selectedLine.city}.${me.order}`]:
+                                  idx,
+                              });
+
+                              transaction.update(
+                                docRef("games", game.id, "players", me.name),
+                                {
+                                  routes: updateRouteStates(game, me).routes,
+                                }
+                              );
+                            }
+                          ).then(() => {
                             setSelectedLine();
                           });
                         } else {

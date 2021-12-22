@@ -7,10 +7,15 @@ export function updateRouteStates(game: Game, me: Player) {
   const ownedLines = getOwnedLines(me, game);
 
   ownedLines.forEach((line) => graph.addEdge(line.start, line.end));
+  console.log(
+    Object.entries(game.boardState.stations.lines).flatMap(
+      ([destNo, owners]) => [destNo, ...Object.entries(owners)]
+    )
+  );
   Object.entries(game.boardState.stations.lines)
-    .flatMap(([destNo, owners]) => [destNo, ...Object.entries(owners)])
-    .filter(([cityNo, owner, destNo]) => owner === me.order)
-    .map(([cityNo, owner, destNo]) => [
+    .map(([destNo, owners]) => [destNo, owners[me.order]])
+    .filter(([cityNo, destNo]) => destNo !== undefined)
+    .map(([cityNo, destNo]) => [
       game.map.destinations[Number(cityNo)].name,
       game.map.destinations[Number(destNo)].name,
     ])

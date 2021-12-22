@@ -19,6 +19,7 @@ interface Props {
 }
 
 function getBonusWinners(bonusType: string, game: Game, players: Player[]) {
+  console.log(bonusType);
   switch (bonusType) {
     case "globetrotter":
       const results = sortBy(
@@ -29,6 +30,7 @@ function getBonusWinners(bonusType: string, game: Game, players: Player[]) {
         ([, wonCount]) => wonCount
       );
       const resultMap = Object.fromEntries(results);
+      console.log(results, resultMap);
       return players.filter(
         (player) => resultMap[player.order] === results[0][1]
       );
@@ -68,16 +70,6 @@ export function Scoreboard({ players, game }: Props) {
                   );
                   return (
                     <tr css={{ borderBottom: "1px solid grey" }}>
-                      <td>
-                        {Object.entries(player.scores.bonuses).map(
-                          ([bonusNo, score]) => (
-                            <Stack>
-                              {game.map.bonuses[Number(bonusNo)].name}
-                              <LocomotiveCard count={score}></LocomotiveCard>
-                            </Stack>
-                          )
-                        )}
-                      </td>
                       <td
                         css={{
                           fontSize: 32,
@@ -110,6 +102,20 @@ export function Scoreboard({ players, game }: Props) {
                           </Stack>
                         ))}
                       </td>
+                      <td>
+                        {Object.entries(player.scores.bonuses).map(
+                          ([bonusNo, score]) => (
+                            <Stack>
+                              <div css={{ margin: "auto" }}>
+                                <LocomotiveCard count={score}></LocomotiveCard>
+                              </div>
+                              <div css={{ fontSize: 12, fontWeight: "bold" }}>
+                                {game.map.bonuses[Number(bonusNo)].name}
+                              </div>
+                            </Stack>
+                          )
+                        )}
+                      </td>
                       <td css={{ padding: "8px 16px" }}>
                         <Flex>
                           {player.routes.map((route, idx) => (
@@ -139,8 +145,10 @@ export function Scoreboard({ players, game }: Props) {
                     !game.scored
                   ) {
                     const bonusWinners = game.map.bonuses.map((bonus) =>
-                      getBonusWinners(bonus.name, game, players)
+                      getBonusWinners(bonus.type, game, players)
                     );
+
+                    console.log(bonusWinners);
 
                     for (let i = 0; i < players.length; i++) {
                       const player = players[i];
@@ -156,10 +164,15 @@ export function Scoreboard({ players, game }: Props) {
                                 : undefined,
                             ])
                             .filter(([, score]) => score !== undefined)
-                        ),
+                        ) as { [key: number]: number },
                         stations: 4 * player.stationCount,
                         total: 0,
                       };
+
+                      scores.total += Object.values(scores.bonuses).reduce(
+                        (a, b) => a + b,
+                        0
+                      );
 
                       const { ownedLines } = updateRouteStates(game, player);
 
