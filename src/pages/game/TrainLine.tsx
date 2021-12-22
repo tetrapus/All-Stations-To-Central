@@ -74,6 +74,7 @@ const TrainLineContainer = styled(Flex)<{
   playable: boolean;
   hintColor?: string;
   destinations: Destination[];
+  stationLineOwner?: Player;
 }>(
   {
     position: "absolute",
@@ -81,7 +82,7 @@ const TrainLineContainer = styled(Flex)<{
     height: 4,
     "--ferryImg": ferryInsignia,
   },
-  ({ line, destinations, colorIdx, playable, hintColor }) => {
+  ({ line, destinations, colorIdx, playable, hintColor, stationLineOwner }) => {
     const citydex = indexBy(destinations, "name");
     const start = citydex[line.start];
     const end = citydex[line.end];
@@ -103,6 +104,7 @@ const TrainLineContainer = styled(Flex)<{
         "--ferryImg": playable ? "var(--hovercolor)" : undefined,
         cursor: playable ? "pointer" : undefined,
       },
+      background: stationLineOwner ? stationLineOwner.color : undefined,
     };
   }
 );
@@ -115,6 +117,7 @@ interface Props {
   lineNo: number;
   color: string;
   colorIdx: number;
+  usedByStation: boolean;
 
   onLineSelected(line: Line, lineNo: number, colorIdx: number): void;
 }
@@ -125,6 +128,7 @@ export function TrainLine({
   lineNo,
   color,
   colorIdx,
+  usedByStation,
   me,
   players,
   onLineSelected,
@@ -157,6 +161,7 @@ export function TrainLine({
       playable={!!(me && playable(game, me))}
       hintColor={me?.color}
       destinations={map.destinations}
+      stationLineOwner={usedByStation ? me : undefined}
       onClick={() => {
         if (!!(me && playable(game, me))) {
           onLineSelected(line, lineNo, colorIdx);
@@ -191,11 +196,11 @@ export function TrainLine({
                   players[game.boardState.lines[lineNo]?.[colorIdx]]?.color
                 }
               >
-                {game.boardState.lines[lineNo]?.[colorIdx] && (
+                {game.boardState.lines[lineNo]?.[colorIdx] !== undefined ? (
                   <PlayerSymbol
                     player={players[game.boardState.lines[lineNo]?.[colorIdx]]}
                   ></PlayerSymbol>
-                )}
+                ) : null}
               </LocomotiveInner>
             </Flex>
           </Locomotive>

@@ -1,34 +1,59 @@
 import React from "react";
-import { Destination } from "data/Game";
+import { Destination, Game, Player } from "data/Game";
 import { Flex } from "atoms/Flex";
 import { CELL_SIZE } from "data/Board";
 import styled from "@emotion/styled";
+import { PlayerSymbol } from "./PlayerColor";
+import { keyframes } from "@emotion/core";
 
 interface Props {
+  game: Game;
+  me?: Player;
+  stationOwner?: Player;
+  stationActive: boolean;
   destination: Destination;
   isHighlighted: boolean;
+  isAdjacent: boolean;
   isSelected: boolean;
+  onLineSelected(): void;
 }
 
-const CityNode = styled.div<{ isHighlighted: boolean; isSelected: boolean }>(
+const whitePulse = keyframes`
+	0% {
+  box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
+}
+
+70% {
+  box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
+}
+
+100% {
+  box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+}`;
+
+const CityNode = styled.div<{
+  clickable: boolean;
+  owner?: Player;
+  stationActive: boolean;
+}>(
   {
     borderRadius: 12,
     width: 22,
     height: 22,
-    border: "1px solid #FFD700",
-    transform: "translateX(-50%)",
+    border: "1px solid black",
   },
-  ({ isHighlighted, isSelected }) => ({
-    background: isHighlighted
-      ? "radial-gradient(circle, green 0%, lightgreen 100%)"
-      : isSelected
-      ? "#aaa"
+  ({ clickable, owner, stationActive }) => ({
+    background: owner
+      ? owner.color
       : "radial-gradient(circle, rgba(255,233,0,1) 0%, rgba(255,79,0,1) 100%)",
-    borderColor: isHighlighted || isSelected ? "white" : undefined,
+    cursor: clickable ? "pointer" : undefined,
+    opacity: stationActive ? 1 : 0.4,
   })
 );
 
-const CityContainer = styled(Flex)<{ destination: Destination }>(
+const CityContainer = styled(Flex)<{
+  destination: Destination;
+}>(
   {
     position: "absolute",
     color: "white",
@@ -40,10 +65,79 @@ const CityContainer = styled(Flex)<{ destination: Destination }>(
   })
 );
 
-export function City({ destination, isHighlighted, isSelected }: Props) {
+const CityRing = styled.div<{
+  isHighlighted: boolean;
+  isSelected: boolean;
+  isAdjacent: boolean;
+}>(
+  {
+    borderRadius: 15,
+    width: 24,
+    height: 24,
+    position: "relative",
+    transform: "translateX(-50%)",
+
+    boxShadow: "0 0 0 0 rgba(255, 255, 255, 1)",
+  },
+  ({ isHighlighted, isSelected, isAdjacent }) => ({
+    border:
+      isHighlighted || isAdjacent
+        ? "3px solid lightgreen"
+        : isSelected
+        ? "3px solid white"
+        : undefined,
+    animation:
+      isHighlighted || isSelected || isAdjacent
+        ? `${whitePulse} 2s infinite`
+        : undefined,
+  })
+);
+
+export function City({
+  game,
+  me,
+  destination,
+  isHighlighted,
+  isAdjacent,
+  stationOwner,
+  stationActive,
+  isSelected,
+  onLineSelected,
+}: Props) {
   return (
     <CityContainer destination={destination}>
-      <CityNode isHighlighted={isHighlighted} isSelected={isSelected} />
+      <CityRing
+        isHighlighted={isHighlighted}
+        isSelected={isSelected}
+        isAdjacent={isAdjacent}
+      >
+        <CityNode
+          owner={stationOwner}
+          stationActive={stationActive}
+          onClick={() => {
+            if (
+              (me &&
+                game.isReady &&
+                ((stationOwner && stationOwner.name === me.name) ||
+                  (!stationOwner && me.stationCount))) ||
+              isAdjacent
+            ) {
+              onLineSelected();
+            }
+          }}
+          clickable={
+            !!(
+              (me &&
+                game.isReady &&
+                ((stationOwner && stationOwner.name === me.name) ||
+                  (!stationOwner && me.stationCount))) ||
+              isAdjacent
+            )
+          }
+        >
+          {stationOwner && <PlayerSymbol player={stationOwner} />}
+        </CityNode>
+      </CityRing>
       <div
         css={{
           background: "rgba(0, 0, 0, 0.5)",

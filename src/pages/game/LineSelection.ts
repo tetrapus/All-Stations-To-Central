@@ -7,5 +7,6 @@ export type LineSelection = (
       lineNo: number;
       colorNo: number;
     }
+  | { type: "city"; city: number; destination?: number }
   | { type: "station"; city: number }
 ) & { selection: TrainColor[] };

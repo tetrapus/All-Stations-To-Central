@@ -8,14 +8,34 @@ import { PlayerColor } from "./PlayerColor";
 import { RouteCard } from "./RouteCard";
 import { TextButton } from "atoms/TextButton";
 import { runGameAction } from "util/run-game-action";
-import { dijkstra } from "graphology-shortest-path";
 import { docRef } from "init/firebase";
-import { getMapGraph, getOwnedLines } from "util/lines";
 import { range } from "util/range";
+import { updateRouteStates } from "../../util/update-route-states";
+import { LocomotiveCard } from "./LocomotiveCard";
 
 interface Props {
   players: Player[];
   game: Game;
+}
+
+function getBonusWinners(bonusType: string, game: Game, players: Player[]) {
+  switch (bonusType) {
+    case "globetrotter":
+      const results = sortBy(
+        players.map((player): [number, number] => [
+          player.order,
+          player.routes.filter((route) => route.won).length,
+        ]),
+        ([, wonCount]) => wonCount
+      );
+      const resultMap = Object.fromEntries(results);
+      return players.filter(
+        (player) => resultMap[player.order] === results[0][1]
+      );
+
+    default:
+      return [];
+  }
 }
 
 export function Scoreboard({ players, game }: Props) {
@@ -48,6 +68,16 @@ export function Scoreboard({ players, game }: Props) {
                   );
                   return (
                     <tr css={{ borderBottom: "1px solid grey" }}>
+                      <td>
+                        {Object.entries(player.scores.bonuses).map(
+                          ([bonusNo, score]) => (
+                            <Stack>
+                              {game.map.bonuses[Number(bonusNo)].name}
+                              <LocomotiveCard count={score}></LocomotiveCard>
+                            </Stack>
+                          )
+                        )}
+                      </td>
                       <td
                         css={{
                           fontSize: 32,
@@ -108,24 +138,32 @@ export function Scoreboard({ players, game }: Props) {
                     game.turn >= game.finalTurn &&
                     !game.scored
                   ) {
-                    const graph = getMapGraph(map);
+                    const bonusWinners = game.map.bonuses.map((bonus) =>
+                      getBonusWinners(bonus.name, game, players)
+                    );
 
                     for (let i = 0; i < players.length; i++) {
                       const player = players[i];
                       const scores = {
                         routes: {} as { [key: number]: number },
                         lines: {} as { [key: number]: number },
-                        bonuses: {},
+                        bonuses: Object.fromEntries(
+                          bonusWinners
+                            .map((winners, idx) => [
+                              idx,
+                              winners.find((p) => p.order === player.order)
+                                ? game.map.bonuses[idx].points
+                                : undefined,
+                            ])
+                            .filter(([, score]) => score !== undefined)
+                        ),
                         stations: 4 * player.stationCount,
                         total: 0,
                       };
-                      // Calculate lines score
-                      const ownedLines = getOwnedLines(player, game);
+
+                      const { ownedLines } = updateRouteStates(game, player);
+
                       // Go through and score each route
-                      graph.clearEdges();
-                      ownedLines.forEach((line) =>
-                        graph.addEdge(line.start, line.end)
-                      );
                       ownedLines.forEach((line) => {
                         if (scores.lines[line.length] === undefined) {
                           scores.lines[line.length] = 1;
@@ -137,9 +175,7 @@ export function Scoreboard({ players, game }: Props) {
                       scores.routes = Object.fromEntries(
                         player.routes.map((route, idx) => [
                           idx,
-                          dijkstra.bidirectional(graph, route.start, route.end)
-                            ? route.points
-                            : -route.points,
+                          route.won ? route.points : -route.points,
                         ])
                       );
                       scores.total += Object.values(scores.routes).reduce(
@@ -147,6 +183,7 @@ export function Scoreboard({ players, game }: Props) {
                         0
                       );
                       // TODO: Bonuses
+
                       // Save scores
                       transaction.update(
                         docRef("games", game.id, "players", player.name),

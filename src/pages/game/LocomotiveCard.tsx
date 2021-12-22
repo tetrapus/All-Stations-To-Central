@@ -5,6 +5,7 @@ import React from "react";
 
 interface Props {
   color?: TrainColor;
+  small?: boolean;
   count?: number;
   clickable?: boolean;
   onClick?: () => void;
@@ -13,16 +14,16 @@ interface Props {
 export const LocomotiveCard = ({ color, count, clickable, onClick }: Props) => (
   <div
     css={{
-      height: 64,
-      width: 48,
+      minHeight: 64,
+      minWidth: 48,
       margin: 4,
       borderRadius: 3,
       border: "1px solid #999",
       background: color ? trainColors[color] : "white",
       cursor: clickable ? "pointer" : undefined,
-      [Breakpoint.MOBILE]: {
-        height: 52,
-        width: 36,
+      [Breakpoint.TABLET]: {
+        minHeight: 52,
+        minWidth: 36,
       },
     }}
     onClick={onClick}

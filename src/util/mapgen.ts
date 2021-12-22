@@ -108,7 +108,13 @@ export function generateMap(mapSettings: MapSettings): GameMap {
       pink: 12,
       rainbow: 14,
     },
-    bonuses: [], // todo
+    bonuses: [
+      {
+        type: "globetrotter",
+        name: "Globetrotter",
+        points: 10,
+      },
+    ], // todo
     scoringTable: mapSettings.scoringTable,
     players: mapSettings.players,
     canMonopolizeLineMin: mapSettings.canMonopolizeLineMin, // todo: balance
@@ -116,11 +122,11 @@ export function generateMap(mapSettings: MapSettings): GameMap {
   };
 
   const margins = {
-    left: 0.5,
-    right: 1,
+    left: 1,
+    right: 2,
 
-    top: 0.5,
-    bottom: 1,
+    top: 1,
+    bottom: 2,
   };
   const mapCells = {
     x: Math.floor(mapSettings.size.width / CELL_SIZE),
@@ -130,7 +136,10 @@ export function generateMap(mapSettings: MapSettings): GameMap {
     x: mapCells.x - margins.left - margins.right,
     y: mapCells.y - margins.top - margins.bottom,
   };
-  while (map.destinations.length < mapSettings.cities) {
+  while (
+    map.destinations.length <
+    Math.min(mapSettings.cities, tracks.x * tracks.y * 0.8)
+  ) {
     const candidate = {
       name: generateCity(),
       position: {

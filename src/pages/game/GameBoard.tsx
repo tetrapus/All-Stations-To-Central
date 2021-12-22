@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { DEFAULT_MAP_SETTINGS, Game, Line, Player } from "data/Game";
+import { DEFAULT_MAP_SETTINGS, Game, Player } from "data/Game";
 import { Flex } from "atoms/Flex";
 import { TextButton } from "atoms/TextButton";
 import { TextInput } from "atoms/TextInput";
@@ -7,7 +7,7 @@ import { doc, serverTimestamp } from "firebase/firestore";
 import { docRef, collectionRef } from "init/firebase";
 import { generateMap } from "util/mapgen";
 import { City } from "./City";
-import { runPlayerAction } from "util/run-game-action";
+import { runGameAction, runPlayerAction } from "util/run-game-action";
 import { isCurrentPlayer } from "util/is-current-player";
 import styled from "@emotion/styled";
 import { TrainLine } from "./TrainLine";
@@ -22,7 +22,7 @@ interface Props {
   players: Player[];
   selectedLine?: LineSelection;
 
-  onLineSelected(line: Line, lineNo: number, colorIdx: number): void;
+  setSelectedLine(selection?: LineSelection): void;
 }
 
 const BoardBackdrop = styled.div<{ game: Game; me?: Player }>(
@@ -60,7 +60,7 @@ export function GameBoard({
   highlightedNodes,
   players,
   selectedLine,
-  onLineSelected,
+  setSelectedLine,
 }: Props) {
   const MAP_DEFAULTS: { [key: string]: string } = {
     Cities: DEFAULT_MAP_SETTINGS.cities.toString(),
@@ -87,19 +87,16 @@ export function GameBoard({
     x: viewerSize.x / game.map.size.width,
     y: viewerSize.y / game.map.size.height,
   };
+  const initialScale = Math.min(viewerScale.x, viewerScale.y);
   return (
     <TransformWrapper
       initialPositionX={
-        viewerScale.x > viewerScale.y
-          ? (game.map.size.width - viewerSize.x) / 2
-          : 0
+        Math.abs(viewerSize.x - game.map.size.width * initialScale) / 2
       }
       initialPositionY={
-        viewerScale.y > viewerScale.x
-          ? (game.map.size.height - viewerSize.y) / 2
-          : 0
+        Math.abs(viewerSize.y - game.map.size.height * initialScale) / 2
       }
-      initialScale={Math.min(viewerScale.x, viewerScale.y)}
+      initialScale={initialScale}
       limitToBounds={false}
       minScale={0.1}
       wheel={{
@@ -185,34 +182,143 @@ export function GameBoard({
         <TransformComponent>
           <BoardBackground game={game} me={me}>
             {map?.lines.map((line, lineNo) =>
-              line.color.map((color, colorIdx) => (
-                <TrainLine
-                  game={game}
-                  me={me}
-                  players={players}
-                  line={line}
-                  lineNo={lineNo}
-                  color={color}
-                  colorIdx={colorIdx}
-                  key={lineNo * 2 + colorIdx}
-                  onLineSelected={onLineSelected}
-                />
-              ))
+              line.color.map((color, colorIdx) => {
+                const destNos = [line.start, line.end].map((name) =>
+                  game.map.destinations.findIndex((d) => d.name === name)
+                );
+                return (
+                  <TrainLine
+                    game={game}
+                    me={me}
+                    players={players}
+                    line={line}
+                    lineNo={lineNo}
+                    color={color}
+                    colorIdx={colorIdx}
+                    usedByStation={
+                      !!(
+                        me &&
+                        destNos
+                          .filter(
+                            (destNo) =>
+                              game.boardState.stations.owners[destNo] ===
+                              me.order
+                          )
+                          .find((destNo) =>
+                            destNos.includes(
+                              game.boardState.stations.lines[destNo][me.order]
+                            )
+                          )
+                      )
+                    }
+                    key={lineNo * 2 + colorIdx}
+                    onLineSelected={() => {
+                      setSelectedLine({
+                        line,
+                        colorNo: colorIdx,
+                        lineNo,
+                        selection: [],
+                        type: "line",
+                      });
+                    }}
+                  />
+                );
+              })
             )}
-            {map?.destinations.map((destination, idx) => (
-              <City
-                destination={destination}
-                isHighlighted={highlightedNodes.includes(destination.name)}
-                isSelected={
+            {map?.destinations.map((destination, idx) =>
+              (() => {
+                const isAdjacent = !!(
+                  ((selectedLine?.type === "city" &&
+                    selectedLine?.destination === undefined) ||
+                    selectedLine?.type === "station") &&
+                  selectedLine.city !== idx &&
+                  map.lines
+                    .filter((line) =>
+                      [line.start, line.end].includes(destination.name)
+                    )
+                    .find((line) =>
+                      [line.start, line.end].includes(
+                        map.destinations[selectedLine.city].name
+                      )
+                    )
+                );
+                const isSelected =
                   (selectedLine?.type === "line" &&
                     (destination.name === selectedLine?.line.start ||
                       destination.name === selectedLine?.line.end)) ||
-                  (selectedLine?.type === "station" &&
-                    selectedLine.city === idx)
-                }
-                key={destination.name}
-              />
-            ))}
+                  (selectedLine?.type === "city" && selectedLine.city === idx);
+                return (
+                  <City
+                    game={game}
+                    me={me}
+                    destination={destination}
+                    stationOwner={
+                      game.boardState.stations.owners[idx] !== undefined
+                        ? players[game.boardState.stations.owners[idx]]
+                        : undefined
+                    }
+                    stationActive={
+                      !!(
+                        game.boardState.stations.owners[idx] !== me?.order ||
+                        Object.keys(game.boardState.lines)
+                          .map((lineNo) => game.map.lines[Number(lineNo)])
+                          .find(
+                            (line) =>
+                              [line.start, line.end].includes(
+                                destination.name
+                              ) &&
+                              [line.start, line.end].includes(
+                                game.map.destinations[
+                                  game.boardState.stations.lines[idx][me.order]
+                                ].name
+                              )
+                          )
+                      )
+                    }
+                    isHighlighted={highlightedNodes.includes(destination.name)}
+                    isAdjacent={isAdjacent}
+                    isSelected={isSelected}
+                    onLineSelected={() => {
+                      if (!me) {
+                        return;
+                      }
+                      if (isAdjacent) {
+                        if (selectedLine.type === "station") {
+                          runGameAction(game, async ({ game, transaction }) => {
+                            transaction.update(docRef("games", game.id), {
+                              [`boardState.stations.lines.${selectedLine.city}.${me.order}`]:
+                                idx,
+                            });
+                          }).then(() => {
+                            setSelectedLine();
+                          });
+                        } else {
+                          setSelectedLine({
+                            ...selectedLine,
+                            destination: idx,
+                          });
+                        }
+                      } else if (
+                        game.boardState.stations.owners[idx] === me?.order
+                      ) {
+                        setSelectedLine({
+                          type: "station",
+                          city: idx,
+                          selection: [],
+                        });
+                      } else {
+                        setSelectedLine({
+                          type: "city",
+                          city: idx,
+                          selection: [],
+                        });
+                      }
+                    }}
+                    key={destination.name}
+                  />
+                );
+              })()
+            )}
           </BoardBackground>
         </TransformComponent>
       </BoardBackdrop>

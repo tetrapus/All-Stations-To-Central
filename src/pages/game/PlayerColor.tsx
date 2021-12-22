@@ -3,6 +3,7 @@ import { Player } from "data/Game";
 import React from "react";
 import { PLAYER_ICONS } from "data/PlayerIcons";
 import { range } from "util/range";
+import { Flex } from "atoms/Flex";
 interface Props {
   player: Player;
 }
@@ -39,20 +40,19 @@ export function PlayerColor({ player }: Props) {
   return (
     <PlayerColorBox player={player}>
       <PlayerSymbol player={player} />
-      {range(player.stationCount).map((idx) => (
-        <div
-          css={{
-            background: player.color,
-            width: 5,
-            height: 5,
-            border: "1px solid #555",
-            borderRadius: 3,
-            position: "absolute",
-            top: 10 + 11 * Math.cos((Math.PI / 4) * idx - 0.1),
-            left: 10 + 11 * Math.sin((Math.PI / 4) * idx - 0.1),
-          }}
-        />
-      ))}
+      <Flex css={{ margin: "auto", justifyContent: "center", padding: 1 }}>
+        {range(player.stationCount).map((idx) => (
+          <div
+            css={{
+              background: player.color,
+              width: 5,
+              height: 5,
+              border: "1px solid white",
+              borderRadius: 3,
+            }}
+          />
+        ))}
+      </Flex>
     </PlayerColorBox>
   );
 }

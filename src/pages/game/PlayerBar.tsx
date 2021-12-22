@@ -183,7 +183,7 @@ export function PlayerBar({ players, game, username }: Props) {
                       color: generateColor(),
                       routes: [],
                       trainCount: 45,
-                      stationCount: 0,
+                      stationCount: 3,
                       isReady: false,
                     }
                   );

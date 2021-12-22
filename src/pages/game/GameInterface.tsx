@@ -33,22 +33,17 @@ import { getNextTurn } from "util/next-turn";
 /**
  * TODO:
  *
+ * Rules Explainer
  * Bonus Cards
- *  - Globetrotter: Most Destination Cards
  *  - European Express (Cross-Country): Longest Path
- * Stations
- *  - Add cardbar support
- *  - Add station selector and indicator
- *  - [x] Add player stats support
- *  - [x] Add to scoring breakdown
- *  - Add to default start conditions
+ * Destination Selector
+ *  - Scroll into view if needed
  * Rainbow Refresh Rule
  * Rich Event Feed
  * Sounds
  * Map Presets
  * AI Players
  * Special Rules
- * Rules Explainer
  * Background Generation
  * Name changes
  *
@@ -111,8 +106,8 @@ export function GameInterface() {
     ) {
       setSelectedLine(undefined);
     } else if (
-      selectedLine.type === "station" &&
-      game.boardState.stations[selectedLine.city] !== undefined
+      selectedLine.type === "city" &&
+      game.boardState.stations.owners[selectedLine.city] !== undefined
     ) {
       setSelectedLine(undefined);
     }
@@ -145,9 +140,9 @@ export function GameInterface() {
     <NavigationContext.Provider value={{ onHighlight, onUnhighlight }}>
       <Stack css={{ height: "100vh" }}>
         <PlayerBar players={players} game={game} username={username} />
-        {game.finalTurn && game.finalTurn < game.turn && (
+        {game.finalTurn && game.finalTurn < game.turn ? (
           <Scoreboard players={players} game={game}></Scoreboard>
-        )}
+        ) : null}
         {me && (
           <CardBar
             me={me}
@@ -171,16 +166,8 @@ export function GameInterface() {
             me={me}
             highlightedNodes={highlightedNodes}
             players={players}
-            onLineSelected={(line, lineNo, colorNo) =>
-              setSelectedLine({
-                line,
-                colorNo,
-                lineNo,
-                selection: [],
-                type: "line",
-              })
-            }
             selectedLine={selectedLine}
+            setSelectedLine={setSelectedLine}
           />
           <Stack css={{ marginTop: 16, flexGrow: 1 }}>
             <Stack

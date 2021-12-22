@@ -59,7 +59,10 @@ export function Homepage() {
                     discard: [],
                   },
                   lines: {},
-                  stations: {},
+                  stations: {
+                    owners: {},
+                    lines: {},
+                  },
                 },
                 map: generateMap(DEFAULT_MAP_SETTINGS),
               };
@@ -72,7 +75,7 @@ export function Homepage() {
                   hand: [],
                   routes: [],
                   trainCount: 45,
-                  stationCount: 0,
+                  stationCount: 3,
                   isReady: false,
                 },
               ];

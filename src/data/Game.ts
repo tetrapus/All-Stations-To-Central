@@ -89,7 +89,8 @@ export interface Card {
 type BonusType = "globetrotter" | "cross-country";
 
 export interface Bonus {
-  name: BonusType;
+  type: BonusType;
+  name: string;
   points: number;
 }
 
@@ -157,7 +158,12 @@ export interface BoardState {
     };
   };
   stations: {
-    [destinationNo: number]: number;
+    owners: {
+      [destinationNo: number]: number;
+    };
+    lines: {
+      [destinationNo: number]: { [playerNo: number]: number };
+    };
   };
 }
 
@@ -204,7 +210,7 @@ export const DEFAULT_MAP_SETTINGS = {
     9: 27,
   },
   size: {
-    height: 800,
-    width: 1400,
+    height: 900,
+    width: 1600,
   },
 };
