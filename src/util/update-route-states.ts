@@ -30,7 +30,11 @@ export function updateRouteStates(game: Game, me: Player) {
           ).length
     )
     .forEach(([city, dest]) => {
-      graph.addEdge(city, dest);
+      try {
+        graph.addEdge(city, dest);
+      } catch {
+        return;
+      }
     });
 
   return {
