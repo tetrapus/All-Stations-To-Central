@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import arrayShuffle from "array-shuffle";
 import { Breakpoint } from "atoms/Breakpoint";
 import { Flex } from "atoms/Flex";
 import { Stack } from "atoms/Stack";
@@ -25,6 +24,7 @@ import { LineSelection } from "./LineSelection";
 import { LocomotiveCard } from "./LocomotiveCard";
 import { RouteCard } from "./RouteCard";
 import { updateRouteStates } from "../../util/update-route-states";
+import arrayShuffle from "array-shuffle";
 
 interface Props {
   me?: Player;
@@ -116,9 +116,11 @@ const popDeck = (game: Game) => {
   if (!game.boardState.carriages.deck.length) {
     game.boardState.carriages.deck = game.boardState.carriages.discard;
     if (!game.boardState.carriages.deck.length && game.map) {
-      game.boardState.carriages.deck = fillRepeats(game?.map.deck, (color) => ({
-        color,
-      }));
+      game.boardState.carriages.deck = arrayShuffle(
+        fillRepeats(game?.map.deck, (color) => ({
+          color,
+        }))
+      );
     }
     game.boardState.carriages.discard = [];
   }
@@ -639,9 +641,8 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
                     game.boardState.carriages.deck =
                       game.boardState.carriages.discard;
                     if (!game.boardState.carriages.deck.length && game.map) {
-                      game.boardState.carriages.deck = fillRepeats(
-                        game?.map.deck,
-                        (color) => ({ color })
+                      game.boardState.carriages.deck = arrayShuffle(
+                        fillRepeats(game?.map.deck, (color) => ({ color }))
                       );
                     }
                     game.boardState.carriages.discard = [];
@@ -703,9 +704,8 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
                   game.boardState.carriages.deck =
                     game.boardState.carriages.discard;
                   if (!game.boardState.carriages.deck.length && game.map) {
-                    game.boardState.carriages.deck = fillRepeats(
-                      game?.map.deck,
-                      (color) => ({ color })
+                    game.boardState.carriages.deck = arrayShuffle(
+                      fillRepeats(game?.map.deck, (color) => ({ color }))
                     );
                   }
                   game.boardState.carriages.discard = [];
