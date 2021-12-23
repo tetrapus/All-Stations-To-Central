@@ -54,12 +54,14 @@ export const RouteCard = ({ count, route, clickable, map, onClick }: Props) => {
         onClick
           ? onClick
           : () => {
-              if (highlighted) {
-                setHighlighted(false);
-                onUnhighlight?.(route);
-              } else {
-                setHighlighted(true);
-                onHighlight?.(route);
+              if (!clickable) {
+                if (highlighted) {
+                  setHighlighted(false);
+                  onUnhighlight?.(route);
+                } else {
+                  setHighlighted(true);
+                  onHighlight?.(route);
+                }
               }
             }
       }
