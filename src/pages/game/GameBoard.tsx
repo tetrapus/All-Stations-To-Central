@@ -260,20 +260,23 @@ export function GameBoard({
                     }
                     stationActive={
                       !!(
-                        game.boardState.stations.owners[idx] !== me?.order ||
-                        Object.keys(game.boardState.lines)
-                          .map((lineNo) => game.map.lines[Number(lineNo)])
-                          .find(
-                            (line) =>
-                              [line.start, line.end].includes(
-                                destination.name
-                              ) &&
-                              [line.start, line.end].includes(
-                                game.map.destinations[
-                                  game.boardState.stations.lines[idx][me.order]
-                                ].name
-                              )
-                          )
+                        me &&
+                        (game.boardState.stations.owners[idx] !== me?.order ||
+                          Object.keys(game.boardState.lines)
+                            .map((lineNo) => game.map.lines[Number(lineNo)])
+                            .find(
+                              (line) =>
+                                [line.start, line.end].includes(
+                                  destination.name
+                                ) &&
+                                [line.start, line.end].includes(
+                                  game.map.destinations[
+                                    game.boardState.stations.lines[idx][
+                                      me.order
+                                    ]
+                                  ].name
+                                )
+                            ))
                       )
                     }
                     isHighlighted={highlightedNodes.includes(destination.name)}
