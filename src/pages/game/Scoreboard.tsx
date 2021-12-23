@@ -166,7 +166,7 @@ export function Scoreboard({ players, game }: Props) {
                             .filter(([, score]) => score !== undefined)
                         ) as { [key: number]: number },
                         stations: 4 * player.stationCount,
-                        total: 0,
+                        total: 4 * player.stationCount,
                       };
 
                       scores.total += Object.values(scores.bonuses).reduce(
