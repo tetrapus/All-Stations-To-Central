@@ -11,6 +11,7 @@ import { Player } from "../data/Game";
 import { generateColor } from "../util/colorgen";
 import { generateMap } from "util/mapgen";
 import { range } from "util/range";
+import { Instructions } from "./game/Instructions";
 
 const randomElement = (array: any[]) =>
   array[Math.floor(Math.random() * array.length)];
@@ -101,6 +102,7 @@ export function Homepage() {
           }}
         ></TextInput>
       </>
+      <Instructions />
     </Stack>
   );
 }

@@ -50,6 +50,7 @@ import { getNextTurn } from "util/next-turn";
  * BUGS
  * Prevent claiming both routes for dual route trains
  * movetimer randomly breaks? maybe to do with removed players
+ * move timer probably broken with route selection
  **/
 
 export function GameInterface() {
