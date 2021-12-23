@@ -417,7 +417,8 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
                     disabled={
                       !game.isReady ||
                       selectedLine.selection.length < requiredCount ||
-                      !isCurrentPlayer(game, me)
+                      !isCurrentPlayer(game, me) ||
+                      game.turnState !== "choose"
                     }
                     onClick={async () => {
                       await runPlayerAction(
@@ -433,7 +434,8 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
                                 !game.isReady
                               )
                               // TODO: Check line claimed condition
-                            )
+                            ) ||
+                            game.turnState !== "choose"
                           ) {
                             return;
                           }
