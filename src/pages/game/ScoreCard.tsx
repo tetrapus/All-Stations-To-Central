@@ -3,7 +3,7 @@ import { Flex } from "atoms/Flex";
 import { Stack } from "atoms/Stack";
 import { GameMap } from "data/Game";
 import React from "react";
-import { range } from "util/range";
+import { nOf } from "util/n-of";
 import { LineLengthIcon } from "./LineLengthIcon";
 
 interface Props {
@@ -26,7 +26,7 @@ export function ScoreCard({ map }: Props) {
     >
       <strong css={{ marginLeft: "auto", fontSize: 14 }}>Points</strong>
       <Flex>
-        {range(Math.ceil(scores.length / 2)).map((group) => (
+        {nOf(Math.ceil(scores.length / 2), (group) => (
           <Stack>
             {scores.slice(group * 3, group * 3 + 3).map(([length, score]) => (
               <Flex css={{ alignItems: "center" }}>

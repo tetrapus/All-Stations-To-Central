@@ -1,5 +1,5 @@
 import { initializeApp } from "@firebase/app";
-import { collection, doc, getFirestore } from "@firebase/firestore";
+import { collection, doc, FieldValue, getFirestore } from "@firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 
 let initialised = false;
@@ -31,3 +31,5 @@ export const docRef = (path: string, ...args: string[]) =>
   doc(db, path, ...args);
 export const collectionRef = (path: string, ...args: string[]) =>
   collection(db, path, ...args);
+
+export type NewRecord<T> = { [Property in keyof T]: T[Property] | FieldValue };

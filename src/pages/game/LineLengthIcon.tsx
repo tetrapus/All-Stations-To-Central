@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { Flex } from "atoms/Flex";
 import { Stack } from "atoms/Stack";
 import React from "react";
-import { range } from "util/range";
+import { nOf } from "util/n-of";
 
 interface Props {
   color: string;
@@ -18,13 +18,11 @@ export function LineLengthIcon({ color, length }: Props) {
   const rows = 4;
   return (
     <Stack css={{ marginRight: "auto" }}>
-      {range(Math.ceil(length / rows)).map((divisor) => (
+      {nOf(Math.ceil(length / rows), (divisor) => (
         <Flex key={divisor}>
-          {range((divisor + 1) * rows > length ? length % rows : rows).map(
-            (idx) => (
-              <LocomotiveIcon color={color} key={idx} />
-            )
-          )}
+          {nOf((divisor + 1) * rows > length ? length % rows : rows, (idx) => (
+            <LocomotiveIcon color={color} key={idx} />
+          ))}
         </Flex>
       ))}
     </Stack>

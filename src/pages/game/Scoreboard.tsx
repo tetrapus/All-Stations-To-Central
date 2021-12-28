@@ -9,7 +9,7 @@ import { RouteCard } from "./RouteCard";
 import { TextButton } from "atoms/TextButton";
 import { runGameAction } from "util/run-game-action";
 import { docRef } from "init/firebase";
-import { range } from "util/range";
+import { nOf } from "util/n-of";
 import { updateRouteStates } from "../../util/update-route-states";
 import { LocomotiveCard } from "./LocomotiveCard";
 
@@ -84,7 +84,7 @@ export function Scoreboard({ players, game }: Props) {
                       </td>
                       <td css={{ padding: "8px 16px 8px 0" }}>{player.name}</td>
                       <td css={{ padding: "8px 16px" }}>
-                        {range(Math.ceil(lines.length / 3)).map((group) => (
+                        {nOf(Math.ceil(lines.length / 3), (group) => (
                           <Stack>
                             {lines
                               .slice(group * 3, group * 3 + 3)

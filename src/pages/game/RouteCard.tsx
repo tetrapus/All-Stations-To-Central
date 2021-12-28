@@ -5,7 +5,7 @@ import { Destination, GameMap, Route } from "data/Game";
 import React, { useContext, useState } from "react";
 import { sortBy } from "util/sort-by";
 import { indexBy } from "util/index-by";
-import { NavigationContext } from "./NavigationContext";
+import { NavigationContext } from "../../data/NavigationContext";
 import styled from "@emotion/styled";
 
 interface Props {

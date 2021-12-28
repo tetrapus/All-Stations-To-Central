@@ -6,15 +6,15 @@ import { TextInput } from "atoms/TextInput";
 import { doc, serverTimestamp } from "firebase/firestore";
 import { docRef, collectionRef } from "init/firebase";
 import { generateMap } from "util/mapgen";
-import { City } from "./City";
+import { City } from "../City";
 import { runPlayerAction } from "util/run-game-action";
 import { isCurrentPlayer } from "util/is-current-player";
 import styled from "@emotion/styled";
-import { TrainLine } from "./TrainLine";
-import { LineSelection } from "./LineSelection";
+import { TrainLine } from "../TrainLine";
+import { LineSelection } from "../LineSelection";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { Breakpoint, BREAKPOINT_MOBILE } from "atoms/Breakpoint";
-import { updateRouteStates } from "../../util/update-route-states";
+import { updateRouteStates } from "../../../util/update-route-states";
 
 interface Props {
   game: Game;

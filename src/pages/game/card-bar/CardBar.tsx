@@ -1,15 +1,7 @@
-import styled from "@emotion/styled";
 import { Breakpoint } from "atoms/Breakpoint";
 import { Flex } from "atoms/Flex";
 import { Stack } from "atoms/Stack";
-import { TextButton } from "atoms/TextButton";
-import {
-  ferryInsignia,
-  Game,
-  Player,
-  trainColors,
-  trainPatterns,
-} from "data/Game";
+import { Game, Player } from "data/Game";
 import { doc, serverTimestamp } from "firebase/firestore";
 import { docRef, collectionRef } from "init/firebase";
 import React from "react";
@@ -17,14 +9,16 @@ import { fillRepeats } from "util/citygen";
 import { getCardCounts } from "util/get-card-counts";
 import { isCurrentPlayer } from "util/is-current-player";
 import { getNextTurn } from "util/next-turn";
-import { range } from "util/range";
+import { nOf } from "util/n-of";
 import { runPlayerAction } from "util/run-game-action";
 import { sortBy } from "util/sort-by";
-import { LineSelection } from "./LineSelection";
-import { LocomotiveCard } from "./LocomotiveCard";
-import { RouteCard } from "./RouteCard";
-import { updateRouteStates } from "../../util/update-route-states";
+import { LineSelection } from "../LineSelection";
+import { LocomotiveCard } from "../LocomotiveCard";
+import { RouteCard } from "../RouteCard";
+import { updateRouteStates } from "../../../util/update-route-states";
 import arrayShuffle from "array-shuffle";
+import { CardSelector } from "./CardSelector";
+import { BuildButton } from "./BuildButton";
 
 interface Props {
   me?: Player;
@@ -32,81 +26,6 @@ interface Props {
   selectedLine?: LineSelection;
   setSelectedLine(selectedLine?: LineSelection): void;
 }
-
-const CardSlotInner = styled(Flex)<{ isFerry: boolean }>({}, ({ isFerry }) => ({
-  backgroundImage: isFerry ? ferryInsignia : undefined,
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "center",
-  width: "100%",
-}));
-
-const CardSlot = styled(Flex)<{
-  color: string;
-  isFerry: boolean;
-}>(
-  {
-    height: 48,
-    width: 32,
-    margin: "auto",
-    border: "2px solid",
-    borderRadius: 2,
-    borderStyle: "dashed",
-    [Breakpoint.TABLET]: {
-      height: 42,
-      width: 28,
-    },
-  },
-  ({ color, isFerry }) => ({
-    borderColor: trainColors[color],
-    borderImage: isFerry ? trainColors["rainbow"] : trainColors[color],
-    borderImageSlice: 1,
-    background: trainPatterns(0.3)[color],
-  })
-);
-
-const CardSlotContainer = styled(Flex)<{ isForTunnel?: boolean }>(
-  {
-    height: 64,
-    width: 48,
-    margin: 5,
-    borderRadius: 2,
-    cursor: "pointer",
-    [Breakpoint.TABLET]: {
-      height: 52,
-      width: 36,
-    },
-  },
-  ({ isForTunnel }) => ({
-    background: isForTunnel ? "#ccc" : "black",
-  })
-);
-
-const CardSelector = ({
-  color,
-  selection,
-  isFerry,
-  isForTunnel,
-  onClick,
-}: {
-  color: string;
-  selection?: string;
-  isFerry: boolean;
-  isForTunnel?: boolean;
-  onClick(): void;
-}) => {
-  if (selection) {
-    return (
-      <LocomotiveCard color={selection} onClick={onClick} clickable={true} />
-    );
-  }
-  return (
-    <CardSlotContainer isForTunnel={isForTunnel} onClick={onClick}>
-      <CardSlot color={color} isFerry={isFerry}>
-        <CardSlotInner isFerry={isFerry} />
-      </CardSlot>
-    </CardSlotContainer>
-  );
-};
 
 const popDeck = (game: Game) => {
   const newCard = game.boardState.carriages.deck.pop();
@@ -127,31 +46,7 @@ const popDeck = (game: Game) => {
   return newCard;
 };
 
-const BuildButton = styled(TextButton)(
-  {
-    fontSize: 16,
-    position: "absolute",
-    top: 78,
-    zIndex: 1,
-    [Breakpoint.MOBILE]: {
-      position: "initial",
-    },
-  },
-  ({ disabled }) =>
-    disabled
-      ? {
-          borderColor: "transparent",
-          boxShadow: "none",
-          color: "black",
-        }
-      : { cursor: "pointer" }
-);
-
 export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
-  if (!game.map) {
-    return null;
-  }
-
   const lineColor =
     selectedLine && selectedLine.type !== "station"
       ? selectedLine.type === "line"
@@ -306,7 +201,7 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
                 >
                   {slotCount &&
                     requiredCount &&
-                    range(slotCount).map((idx) => (
+                    nOf(slotCount, (idx) => (
                       <CardSelector
                         key={idx}
                         color={requiredColor || "rainbow"}
@@ -445,7 +340,7 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
                           let requiredCards = requiredCount;
                           if (optionalCount) {
                             challenge.push(
-                              ...range(optionalCount).map(() => popDeck(game))
+                              ...nOf(optionalCount, () => popDeck(game))
                             );
                             const challengeColor =
                               selectedLine.selection.find(
@@ -762,9 +657,10 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
                 await transaction.update(
                   docRef("games", game.id, "players", me.name),
                   {
-                    "routeChoices.routes": range(
-                      Math.min(3, game.boardState.routes.deck.length)
-                    ).map(() => game.boardState.routes.deck.pop()),
+                    "routeChoices.routes": nOf(
+                      Math.min(3, game.boardState.routes.deck.length),
+                      () => game.boardState.routes.deck.pop()
+                    ),
                     "routeChoices.keepMin": 1,
                   }
                 );

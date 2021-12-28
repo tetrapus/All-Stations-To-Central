@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { Player } from "data/Game";
 import React from "react";
 import { PLAYER_ICONS } from "data/PlayerIcons";
-import { range } from "util/range";
+import { nOf } from "util/n-of";
 import { Flex } from "atoms/Flex";
 interface Props {
   player: Player;
@@ -36,21 +36,25 @@ export const PlayerSymbol = styled.div<Props>(
   })
 );
 
+const StationIndicator = styled.div<Props>(
+  {
+    width: 5,
+    height: 5,
+    border: "1px solid white",
+    borderRadius: 3,
+  },
+  ({ player }) => ({
+    background: player.color,
+  })
+);
+
 export function PlayerColor({ player }: Props) {
   return (
     <PlayerColorBox player={player}>
       <PlayerSymbol player={player} />
       <Flex css={{ margin: "auto", justifyContent: "center", padding: 1 }}>
-        {range(player.stationCount).map((idx) => (
-          <div
-            css={{
-              background: player.color,
-              width: 5,
-              height: 5,
-              border: "1px solid white",
-              borderRadius: 3,
-            }}
-          />
+        {nOf(player.stationCount, (idx) => (
+          <StationIndicator player={player} key={idx} />
         ))}
       </Flex>
     </PlayerColorBox>
