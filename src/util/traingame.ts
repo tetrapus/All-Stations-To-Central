@@ -1,3 +1,6 @@
+import { indexBy } from "./index-by";
+import { sortBy } from "./sort-by";
+
 const ops: { [key: string]: (a: number, b: number) => number } = {
   "+": (a, b) => a + b,
   "*": (a, b) => a * b,
@@ -5,7 +8,7 @@ const ops: { [key: string]: (a: number, b: number) => number } = {
   "/": (a, b) => a / b,
 };
 
-const bracket = (a: string) => (a.match(/ /) ? `(${a})` : a);
+const bracket = (a: string) => (!a.match(/^(\(.*\))|[^ ]+$/) ? `(${a})` : a);
 
 const modifiers: {
   op: (n: number) => number;
@@ -58,25 +61,28 @@ function runPermutations(ast: AST): { value: number; ops: string }[] {
     return flat[0];
   } else {
     // Flatten the level of the tree into a set of single values
-    const result = flat
-      .slice(1)
-      .reduce(
-        (a, b) =>
-          Object.entries(ops)
-            .map(([symbol, op]) =>
-              a.map(({ value: v1, ops: o1 }) =>
-                b.map(({ value: v2, ops: o2 }) => ({
-                  value: op(v1, v2),
-                  ops: `(${o1} ${symbol} ${o2})`,
-                }))
-              )
+    const result = flat.slice(1).reduce(
+      (a, b) =>
+        Object.entries(ops)
+          .map(([symbol, op]) =>
+            a.map(({ value: v1, ops: o1 }) =>
+              b.map(({ value: v2, ops: o2 }) => ({
+                value: op(v1, v2),
+                ops: `(${o1} ${symbol} ${o2})`.replace("+ -", "- "),
+              }))
             )
-            .flat(2),
-        flat[0]
-      )
-      .filter(({ value }) => value === 10);
+          )
+          .flat(2),
+      flat[0]
+    );
+    // just grab the simplest version for each value
     console.log("result", result);
-    return result;
+    return Object.values(
+      indexBy(
+        sortBy(result, ({ ops }) => ops.length),
+        "value"
+      )
+    );
   }
 }
 
@@ -97,5 +103,16 @@ export function traingame([a, b, c, d]: [number, number, number, number]) {
     [a, [[b, c], d]],
     [a, [b, [c, d]]],
   ];
-  return asts.map((ast) => runPermutations(ast)).flat(1);
+  const results = asts
+    .map((ast) => runPermutations(ast).filter(({ value }) => value === 10))
+    .flat(1);
+  return Object.values(
+    indexBy(
+      results.map((result) => ({
+        ...result,
+        key: result.ops.replace(/[ ()]/, ""),
+      })),
+      "key"
+    )
+  );
 }
