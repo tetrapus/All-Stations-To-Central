@@ -146,6 +146,7 @@ export function generateMap(mapSettings: MapSettings): GameMap {
         x: Math.round(tracks.x * Math.random()) + margins.left,
         y: Math.round(tracks.y * Math.random()) + margins.top,
       },
+      id: 0,
     };
     if (candidate.position.x % 2 === 0) {
       candidate.position.y += 0.5;
@@ -420,6 +421,11 @@ export function generateMap(mapSettings: MapSettings): GameMap {
       choose(Object.fromEntries(Object.keys(trainColors).map((e) => [e, 1])))
     );
   }
+
+  // fix destination ids
+  map.destinations.forEach((destination, idx) => {
+    destination.id = idx;
+  });
 
   return map;
 }

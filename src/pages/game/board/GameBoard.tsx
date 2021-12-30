@@ -8,25 +8,22 @@ import { docRef, collectionRef } from "init/firebase";
 import { generateMap } from "util/mapgen";
 import { City } from "../City";
 import { runPlayerAction } from "util/run-game-action";
-import { isCurrentPlayer } from "util/is-current-player";
 import styled from "@emotion/styled";
 import { TrainLine } from "../TrainLine";
 import { LineSelection } from "../LineSelection";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { Breakpoint, BREAKPOINT_MOBILE } from "atoms/Breakpoint";
-import { updateRouteStates } from "../../../util/update-route-states";
+import { updateRouteStates } from "util/update-route-states";
+import { EngineContext, useEngine } from "util/game-engine";
 
 interface Props {
-  game: Game;
-  me?: Player;
   highlightedNodes: string[];
-  players: Player[];
   selectedLine?: LineSelection;
 
   setSelectedLine(selection?: LineSelection): void;
 }
 
-const BoardBackdrop = styled.div<{ game: Game; me?: Player }>(
+const BoardBackdrop = styled.div<{ myTurn: boolean }>(
   {
     backgroundSize: "cover",
     position: "relative",
@@ -40,8 +37,8 @@ const BoardBackdrop = styled.div<{ game: Game; me?: Player }>(
       margin: "8px 0px",
     },
   },
-  ({ game, me }) => ({
-    background: me && isCurrentPlayer(game, me) ? "black" : "#333",
+  ({ myTurn }) => ({
+    background: myTurn ? "black" : "#333",
   })
 );
 
@@ -55,28 +52,25 @@ const BoardBackground = styled.div<{ game: Game; me?: Player }>(
   })
 );
 
+const MAP_DEFAULTS: { [key: string]: string } = {
+  Cities: DEFAULT_MAP_SETTINGS.cities.toString(),
+  Connectivity: DEFAULT_MAP_SETTINGS.connectivity.toString(),
+  Routes: DEFAULT_MAP_SETTINGS.routes.toString(),
+  Width: DEFAULT_MAP_SETTINGS.size.width.toString(),
+  Height: DEFAULT_MAP_SETTINGS.size.height.toString(),
+  //'Min Players': DEFAULT_MAP_SETTINGS.players.min.toString(),
+  "Max Players": DEFAULT_MAP_SETTINGS.players.max.toString(),
+};
+
 export function GameBoard({
-  game,
-  me,
   highlightedNodes,
-  players,
   selectedLine,
   setSelectedLine,
 }: Props) {
-  const MAP_DEFAULTS: { [key: string]: string } = {
-    Cities: DEFAULT_MAP_SETTINGS.cities.toString(),
-    Connectivity: DEFAULT_MAP_SETTINGS.connectivity.toString(),
-    Routes: DEFAULT_MAP_SETTINGS.routes.toString(),
-    Width: DEFAULT_MAP_SETTINGS.size.width.toString(),
-    Height: DEFAULT_MAP_SETTINGS.size.height.toString(),
-    //'Min Players': DEFAULT_MAP_SETTINGS.players.min.toString(),
-    "Max Players": DEFAULT_MAP_SETTINGS.players.max.toString(),
-  };
   const [mapSettings, setMapSettings] = useState(MAP_DEFAULTS);
+  const engine = useEngine(EngineContext);
+  const { game, players, me } = engine.getState();
 
-  if (!game.map) return null;
-
-  const map = game.map;
   const viewerSize = {
     x:
       window.innerWidth > BREAKPOINT_MOBILE
@@ -104,7 +98,7 @@ export function GameBoard({
         step: 0.075,
       }}
     >
-      <BoardBackdrop game={game} me={me}>
+      <BoardBackdrop myTurn={engine.isCurrentPlayer()}>
         <Flex>
           <span
             css={{
@@ -117,7 +111,7 @@ export function GameBoard({
               },
             }}
           >
-            {map?.name}
+            {game.map.name}
           </span>
           {!game.isStarted ? (
             <Flex>
@@ -182,16 +176,13 @@ export function GameBoard({
         </Flex>
         <TransformComponent>
           <BoardBackground game={game} me={me}>
-            {map?.lines.map((line, lineNo) =>
+            {game.map.lines.map((line, lineNo) =>
               line.color.map((color, colorIdx) => {
                 const destNos = [line.start, line.end].map((name) =>
                   game.map.destinations.findIndex((d) => d.name === name)
                 );
                 return (
                   <TrainLine
-                    game={game}
-                    me={me}
-                    players={players}
                     line={line}
                     lineNo={lineNo}
                     color={color}
@@ -226,20 +217,20 @@ export function GameBoard({
                 );
               })
             )}
-            {map?.destinations.map((destination, idx) =>
+            {game.map.destinations.map((destination, idx) =>
               (() => {
                 const isAdjacent = !!(
                   ((selectedLine?.type === "city" &&
                     selectedLine?.destination === undefined) ||
                     selectedLine?.type === "station") &&
                   selectedLine.city !== idx &&
-                  map.lines
+                  game.map.lines
                     .filter((line) =>
                       [line.start, line.end].includes(destination.name)
                     )
                     .find((line) =>
                       [line.start, line.end].includes(
-                        map.destinations[selectedLine.city].name
+                        game.map.destinations[selectedLine.city].name
                       )
                     )
                 );
@@ -250,8 +241,6 @@ export function GameBoard({
                   (selectedLine?.type === "city" && selectedLine.city === idx);
                 return (
                   <City
-                    game={game}
-                    me={me}
                     destination={destination}
                     stationOwner={
                       game.boardState.stations.owners[idx] !== undefined

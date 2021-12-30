@@ -1,9 +1,7 @@
-import arrayShuffle from "array-shuffle";
 import { Breakpoint } from "atoms/Breakpoint";
 import { Flex } from "atoms/Flex";
 import { Stack } from "atoms/Stack";
 import { TextButton } from "atoms/TextButton";
-import { Game, Player } from "data/Game";
 import { doc, serverTimestamp } from "firebase/firestore";
 import { docRef, collectionRef } from "init/firebase";
 import React from "react";
@@ -13,20 +11,20 @@ import { runGameAction, runPlayerAction } from "util/run-game-action";
 import { MoveTimer } from "./MoveTimer";
 import { PlayerColor } from "./PlayerColor";
 import { ScoreCard } from "./ScoreCard";
+import { EngineContext, useEngine } from "../../util/game-engine";
+import { shuffle } from "util/random";
 
 interface Props {
-  players?: Player[];
-  game: Game;
   username: string;
 }
 
-export function PlayerBar({ players, game, username }: Props) {
+export function PlayerBar({ username }: Props) {
+  const engine = useEngine(EngineContext);
+  const { game, players, me } = engine.getState();
   const currentPlayer =
     !players || (game.finalTurn && game.turn > game.finalTurn)
       ? undefined
       : players[game.turn % players.length];
-
-  const me = players?.find((player) => player.name === username);
 
   return (
     <Flex
@@ -225,7 +223,7 @@ export function PlayerBar({ players, game, username }: Props) {
                   if (!map || !players) {
                     return;
                   }
-                  const carriages = arrayShuffle(
+                  const carriages = shuffle(
                     fillRepeats(map.deck, (color) => ({ color }))
                   );
                   const faceUp = [
@@ -235,7 +233,7 @@ export function PlayerBar({ players, game, username }: Props) {
                     carriages.pop(),
                     carriages.pop(),
                   ];
-                  const routes = arrayShuffle([...map.routes]);
+                  const routes = shuffle([...map.routes]);
                   for (let i = 0; i < players.length; i++) {
                     await transaction.update(
                       docRef("games", game.id, "players", players[i].name),

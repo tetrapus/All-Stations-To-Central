@@ -6,6 +6,7 @@ export interface Position {
 }
 
 export interface Destination {
+  id: number;
   name: string;
   position: Position;
 }

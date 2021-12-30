@@ -16,6 +16,7 @@ import { getCardCounts } from "util/get-card-counts";
 import { indexBy } from "util/index-by";
 import { distance } from "util/mapgen";
 import { PlayerSymbol } from "./PlayerColor";
+import { EngineContext, useEngine } from "../../util/game-engine";
 
 const Locomotive = styled(Flex)<{
   color: string;
@@ -110,9 +111,6 @@ const TrainLineContainer = styled(Flex)<{
 );
 
 interface Props {
-  game: Game;
-  me?: Player;
-  players: Player[];
   line: Line;
   lineNo: number;
   color: string;
@@ -123,21 +121,20 @@ interface Props {
 }
 
 export function TrainLine({
-  game,
   line,
   lineNo,
   color,
   colorIdx,
   usedByStation,
-  me,
-  players,
   onLineSelected,
 }: Props) {
-  const map = game.map;
-  const start = map.destinations.find(
+  const engine = useEngine(EngineContext);
+  const { game, players, me } = engine.getState();
+
+  const start = game.map.destinations.find(
     (destination) => line.start === destination.name
   );
-  const end = map.destinations.find(
+  const end = game.map.destinations.find(
     (destination) => line.end === destination.name
   );
   if (!start || !end) return null;
@@ -160,7 +157,7 @@ export function TrainLine({
       colorIdx={colorIdx}
       playable={!!(me && playable(game, me))}
       hintColor={me?.color}
-      destinations={map.destinations}
+      destinations={game.map.destinations}
       stationLineOwner={usedByStation ? me : undefined}
       onClick={() => {
         if (!!(me && playable(game, me))) {

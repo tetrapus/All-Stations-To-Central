@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import "./App.css";
 import { BrowserRouter as Router, Route, Switch } from "react-router-dom";
 import { Homepage } from "pages/Homepage";
@@ -7,17 +7,6 @@ import { GamePage } from "./pages/GamePage";
 import { traingame } from "util/traingame";
 
 function App() {
-  const systemDarkMode = window.matchMedia("(prefers-color-scheme: dark)");
-  const [, setDarkMode] = useState(systemDarkMode.matches);
-  useEffect(() => {
-    if (!systemDarkMode.addEventListener) {
-      return;
-    }
-    systemDarkMode.addEventListener("change", (event) => {
-      setDarkMode(event.matches);
-    });
-  }, [systemDarkMode, setDarkMode]);
-
   const [username, setUsername] = useState<string | null>(
     localStorage.getItem("username")
   );
@@ -28,7 +17,7 @@ function App() {
     <>
       <Router>
         <Switch>
-          <Route path="/:traingame">
+          <Route path="/traingame">
             <div>
               <TextInput
                 placeholder="Enter 4 digits"

@@ -24,6 +24,12 @@ function generateCode() {
   )}`;
 }
 
+type Move = {
+  SelectStation: {
+    destination: number;
+  };
+};
+
 export class GameEngine {
   constructor(public game: Game, protected players: Player[]) {}
 
@@ -88,8 +94,28 @@ export class GameEngine {
     );
   }
 
-  getState() {
+  getState(): { game: Game; players: Player[]; me?: Player } {
     return { game: this.game, players: this.players };
+  }
+
+  isEnded(): boolean {
+    return !!(this.game.finalTurn && this.game.finalTurn < this.game.turn);
+  }
+
+  isActive(): boolean {
+    return this.game.isReady && !this.isEnded();
+  }
+
+  canAct<T extends keyof Move>(
+    move: T,
+    moveOptions: Move[T],
+    now: boolean = true
+  ): boolean {
+    return false;
+  }
+
+  isCurrentPlayer() {
+    return false;
   }
 }
 
@@ -102,8 +128,36 @@ export class PlayerEngine extends GameEngine {
     super(game, players);
   }
 
-  getState() {
+  getState(): { game: Game; players: Player[]; me: Player } {
     return { ...super.getState(), me: this.me };
+  }
+
+  canAct<T extends keyof Move>(
+    move: T,
+    moveOptions: Move[T],
+    now: boolean = true
+  ): boolean {
+    if (!this.isActive()) {
+      return false;
+    }
+    switch (move) {
+      case "SelectStation":
+        const stationOwner =
+          this.game.boardState.stations.owners[moveOptions.destination];
+        return !!(
+          stationOwner === this.me.order ||
+          (stationOwner === undefined && this.me.stationCount)
+        );
+      default:
+        throw new Error("Oh no,, my state,, it's broken");
+    }
+  }
+
+  isCurrentPlayer() {
+    return (
+      this.isActive() &&
+      this.game.turn % this.game.playerCount === this.me.order
+    );
   }
 }
 

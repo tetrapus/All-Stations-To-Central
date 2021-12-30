@@ -12,11 +12,7 @@ import { docRef } from "init/firebase";
 import { nOf } from "util/n-of";
 import { updateRouteStates } from "../../util/update-route-states";
 import { LocomotiveCard } from "./LocomotiveCard";
-
-interface Props {
-  players: Player[];
-  game: Game;
-}
+import { EngineContext, useEngine } from "../../util/game-engine";
 
 function getBonusWinners(bonusType: string, game: Game, players: Player[]) {
   console.log(bonusType);
@@ -40,17 +36,13 @@ function getBonusWinners(bonusType: string, game: Game, players: Player[]) {
   }
 }
 
-export function Scoreboard({ players, game }: Props) {
+export function Scoreboard() {
+  const engine = useEngine(EngineContext);
+  const { game, players } = engine.getState();
   const rankings = sortBy(
     players.filter((player) => player.scores),
     (p) => p.scores?.total || 0
   );
-
-  const map = game.map;
-
-  if (!map) {
-    return null;
-  }
 
   return (
     <Stack css={{ padding: "16px 32px" }}>
@@ -122,7 +114,7 @@ export function Scoreboard({ players, game }: Props) {
                             <RouteCard
                               route={route}
                               count={player.scores?.routes[idx]}
-                              map={map}
+                              map={game.map}
                             ></RouteCard>
                           ))}
                         </Flex>
@@ -183,7 +175,7 @@ export function Scoreboard({ players, game }: Props) {
                         } else {
                           scores.lines[line.length] += 1;
                         }
-                        scores.total += map.scoringTable[line.length];
+                        scores.total += game.map.scoringTable[line.length];
                       });
                       scores.routes = Object.fromEntries(
                         player.routes.map((route, idx) => [

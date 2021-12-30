@@ -109,13 +109,9 @@ export function GameInterface({ game, players, username, id }: Props) {
     <EngineContext.Provider value={engine}>
       <NavigationContext.Provider value={{ onHighlight, onUnhighlight }}>
         <Stack css={{ height: "100vh" }}>
-          <PlayerBar players={players} game={game} username={username} />
-          {game.finalTurn && game.finalTurn < game.turn ? (
-            <Scoreboard players={players} game={game}></Scoreboard>
-          ) : null}
+          <PlayerBar username={username} />
+          {engine.isEnded() ? <Scoreboard /> : null}
           <CardBar
-            game={game}
-            me={me}
             selectedLine={selectedLine}
             setSelectedLine={setSelectedLine}
           />
@@ -130,10 +126,7 @@ export function GameInterface({ game, players, username, id }: Props) {
             }}
           >
             <GameBoard
-              game={game}
-              me={me}
               highlightedNodes={highlightedNodes}
-              players={players}
               selectedLine={selectedLine}
               setSelectedLine={setSelectedLine}
             />

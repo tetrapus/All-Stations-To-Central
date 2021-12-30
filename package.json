@@ -16,7 +16,6 @@
     "@types/react-lottie": "^1.2.6",
     "@types/react-router-dom": "^5.1.6",
     "@types/react-timeago": "^4.1.3",
-    "array-shuffle": "^3.0.0",
     "customize-cra": "^1.0.0",
     "firebase": "^9.6.0",
     "graphology": "^0.23.2",
@@ -60,11 +59,17 @@
     ]
   },
   "devDependencies": {
+    "@babel/plugin-transform-modules-commonjs": "^7.16.5",
     "@emotion/babel-preset-css-prop": "^10.0.27",
-    "babel-plugin-emotion": "^10.0.33"
+    "babel-plugin-emotion": "^10.0.33",
+    "cypress": "^9.2.0",
+    "jest-localstorage-mock": "^2.4.18"
   },
   "resolutions": {
     "**/@typescript-eslint/eslint-plugin": "^4.1.1",
     "**/@typescript-eslint/parser": "^4.1.1"
+  },
+  "jest": {
+    "resetMocks": false
   }
 }

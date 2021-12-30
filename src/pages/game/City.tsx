@@ -1,14 +1,14 @@
 import React from "react";
-import { Destination, Game, Player } from "data/Game";
+import { Destination, Player } from "data/Game";
 import { Flex } from "atoms/Flex";
 import { CELL_SIZE } from "data/Board";
 import styled from "@emotion/styled";
 import { PlayerSymbol } from "./PlayerColor";
 import { keyframes } from "@emotion/core";
+import { EngineContext } from "util/game-engine";
+import { useEngine } from "../../util/game-engine";
 
 interface Props {
-  game: Game;
-  me?: Player;
   stationOwner?: Player;
   stationActive: boolean;
   destination: Destination;
@@ -95,8 +95,6 @@ const CityRing = styled.div<{
 );
 
 export function City({
-  game,
-  me,
   destination,
   isHighlighted,
   isAdjacent,
@@ -105,6 +103,8 @@ export function City({
   isSelected,
   onLineSelected,
 }: Props) {
+  const engine = useEngine(EngineContext);
+
   return (
     <CityContainer destination={destination}>
       <CityRing
@@ -117,23 +117,15 @@ export function City({
           stationActive={stationActive}
           onClick={() => {
             if (
-              (me &&
-                game.isReady &&
-                ((stationOwner && stationOwner.name === me.name) ||
-                  (!stationOwner && me.stationCount))) ||
+              engine.canAct("SelectStation", { destination: destination.id }) ||
               isAdjacent
             ) {
               onLineSelected();
             }
           }}
           clickable={
-            !!(
-              (me &&
-                game.isReady &&
-                ((stationOwner && stationOwner.name === me.name) ||
-                  (!stationOwner && me.stationCount))) ||
-              isAdjacent
-            )
+            engine.canAct("SelectStation", { destination: destination.id }) ||
+            isAdjacent
           }
         >
           {stationOwner && <PlayerSymbol player={stationOwner} />}

@@ -16,13 +16,12 @@ import { LineSelection } from "../LineSelection";
 import { LocomotiveCard } from "../LocomotiveCard";
 import { RouteCard } from "../RouteCard";
 import { updateRouteStates } from "../../../util/update-route-states";
-import arrayShuffle from "array-shuffle";
 import { CardSelector } from "./CardSelector";
 import { BuildButton } from "./BuildButton";
+import { EngineContext, useEngine } from "../../../util/game-engine";
+import { shuffle } from "util/random";
 
 interface Props {
-  me?: Player;
-  game: Game;
   selectedLine?: LineSelection;
   setSelectedLine(selectedLine?: LineSelection): void;
 }
@@ -35,7 +34,7 @@ const popDeck = (game: Game) => {
   if (!game.boardState.carriages.deck.length) {
     game.boardState.carriages.deck = game.boardState.carriages.discard;
     if (!game.boardState.carriages.deck.length && game.map) {
-      game.boardState.carriages.deck = arrayShuffle(
+      game.boardState.carriages.deck = shuffle(
         fillRepeats(game?.map.deck, (color) => ({
           color,
         }))
@@ -46,7 +45,9 @@ const popDeck = (game: Game) => {
   return newCard;
 };
 
-export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
+export function CardBar({ selectedLine, setSelectedLine }: Props) {
+  const engine = useEngine(EngineContext);
+  const { game, me } = engine.getState();
   const lineColor =
     selectedLine && selectedLine.type !== "station"
       ? selectedLine.type === "line"
@@ -538,7 +539,7 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
                     game.boardState.carriages.deck =
                       game.boardState.carriages.discard;
                     if (!game.boardState.carriages.deck.length && game.map) {
-                      game.boardState.carriages.deck = arrayShuffle(
+                      game.boardState.carriages.deck = shuffle(
                         fillRepeats(game?.map.deck, (color) => ({ color }))
                       );
                     }
@@ -601,7 +602,7 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
                   game.boardState.carriages.deck =
                     game.boardState.carriages.discard;
                   if (!game.boardState.carriages.deck.length && game.map) {
-                    game.boardState.carriages.deck = arrayShuffle(
+                    game.boardState.carriages.deck = shuffle(
                       fillRepeats(game?.map.deck, (color) => ({ color }))
                     );
                   }
@@ -647,7 +648,7 @@ export function CardBar({ me, game, selectedLine, setSelectedLine }: Props) {
                 if (game.boardState.routes.deck.length <= 3) {
                   game.boardState.routes.deck = [
                     ...game.boardState.routes.deck,
-                    ...arrayShuffle(game.boardState.routes.discard),
+                    ...shuffle(game.boardState.routes.discard),
                   ];
                   game.boardState.routes.discard = [];
                 }
