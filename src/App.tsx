@@ -48,7 +48,7 @@ function App() {
               <Route path="/:id">
                 <GamePage />
               </Route>
-              <Route path="/">
+              <Route exact path="/">
                 <Homepage />
               </Route>
             </>

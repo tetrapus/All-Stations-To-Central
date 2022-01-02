@@ -15,6 +15,7 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { Breakpoint, BREAKPOINT_MOBILE } from "atoms/Breakpoint";
 import { updateRouteStates } from "util/update-route-states";
 import { EngineContext, useEngine } from "util/game-engine";
+import { PlayerView } from "../PlayerView";
 
 interface Props {
   highlightedNodes: string[];
@@ -113,66 +114,68 @@ export function GameBoard({
           >
             {game.map.name}
           </span>
-          {!game.isStarted ? (
-            <Flex>
-              {Object.entries(MAP_DEFAULTS).map(([label, def]) => (
-                <TextInput
-                  key={label}
-                  placeholder={`${label} (${def})`}
-                  value={mapSettings[label]}
-                  onChange={(e) => {
-                    setMapSettings({
-                      ...mapSettings,
-                      [label]: e.currentTarget.value,
-                    });
-                  }}
-                  css={{ width: 80 }}
-                />
-              ))}
-              <TextButton
-                onClick={() => {
-                  if (!me) {
-                    return;
-                  }
-                  runPlayerAction(
-                    game,
-                    me,
-                    async ({ game, me, transaction }) => {
-                      const newSettings = {
-                        cities: Number(mapSettings.Cities),
-                        connectivity: Number(mapSettings.Connectivity),
-                        routes: Number(mapSettings.Routes),
-                        size: {
-                          width: Number(mapSettings.Width),
-                          height: Number(mapSettings.Height),
-                        },
-                        players: {
-                          min: DEFAULT_MAP_SETTINGS.players.min, // Number(mapSettings.min),
-                          max: Number(mapSettings["Max Players"]),
-                        },
-                      };
-                      transaction.update(docRef("games", game.id), {
-                        map: generateMap({
-                          ...DEFAULT_MAP_SETTINGS,
-                          ...newSettings,
-                        }),
+          <PlayerView>
+            {!game.isStarted ? (
+              <Flex>
+                {Object.entries(MAP_DEFAULTS).map(([label, def]) => (
+                  <TextInput
+                    key={label}
+                    placeholder={`${label} (${def})`}
+                    value={mapSettings[label]}
+                    onChange={(e) => {
+                      setMapSettings({
+                        ...mapSettings,
+                        [label]: e.currentTarget.value,
                       });
-                      await transaction.set(
-                        doc(collectionRef("games", game.id, "events")),
-                        {
-                          author: me.name,
-                          timestamp: serverTimestamp(),
-                          message: `${me.name} updated the map`,
-                        }
-                      );
+                    }}
+                    css={{ width: 80 }}
+                  />
+                ))}
+                <TextButton
+                  onClick={() => {
+                    if (!me) {
+                      return;
                     }
-                  );
-                }}
-              >
-                Randomize Map
-              </TextButton>
-            </Flex>
-          ) : null}
+                    runPlayerAction(
+                      game,
+                      me,
+                      async ({ game, me, transaction }) => {
+                        const newSettings = {
+                          cities: Number(mapSettings.Cities),
+                          connectivity: Number(mapSettings.Connectivity),
+                          routes: Number(mapSettings.Routes),
+                          size: {
+                            width: Number(mapSettings.Width),
+                            height: Number(mapSettings.Height),
+                          },
+                          players: {
+                            min: DEFAULT_MAP_SETTINGS.players.min, // Number(mapSettings.min),
+                            max: Number(mapSettings["Max Players"]),
+                          },
+                        };
+                        transaction.update(docRef("games", game.id), {
+                          map: generateMap({
+                            ...DEFAULT_MAP_SETTINGS,
+                            ...newSettings,
+                          }),
+                        });
+                        await transaction.set(
+                          doc(collectionRef("games", game.id, "events")),
+                          {
+                            author: me.name,
+                            timestamp: serverTimestamp(),
+                            message: `${me.name} updated the map`,
+                          }
+                        );
+                      }
+                    );
+                  }}
+                >
+                  Randomize Map
+                </TextButton>
+              </Flex>
+            ) : null}
+          </PlayerView>
         </Flex>
         <TransformComponent>
           <BoardBackground game={game} me={me}>

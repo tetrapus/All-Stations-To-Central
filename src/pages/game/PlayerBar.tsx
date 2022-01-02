@@ -150,6 +150,17 @@ export function PlayerBar({ username }: Props) {
                     await transaction.update(docRef("games", game.id), {
                       playerCount: game.playerCount - 1,
                     });
+                    const others = players.filter(
+                      (player) => player.order > me.order
+                    );
+                    for (let i = 0; i < others.length; i++) {
+                      await transaction.update(
+                        docRef("games", game.id, "players", others[i].name),
+                        {
+                          order: others[i].order - 1,
+                        }
+                      );
+                    }
                     await transaction.set(
                       doc(collectionRef("games", game.id, "events")),
                       {
@@ -208,7 +219,7 @@ export function PlayerBar({ username }: Props) {
               : `${game.finalTurn - game.turn} turns left`}
           </strong>
         ) : null}
-        {!game.isStarted && game.map && me ? (
+        {!game.isStarted && game.playerCount > 1 && game.map && me ? (
           <TextButton
             css={{ margin: 8 }}
             onClick={async () => {

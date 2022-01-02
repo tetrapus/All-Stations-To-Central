@@ -163,8 +163,8 @@ export function generateMap(mapSettings: MapSettings): GameMap {
   }
 
   let possiblePaths = [];
-  for (var i = 0; i < mapSettings.cities; i++) {
-    for (var j = i + 1; j < mapSettings.cities; j++) {
+  for (var i = 0; i < map.destinations.length; i++) {
+    for (var j = i + 1; j < map.destinations.length; j++) {
       possiblePaths.push({
         distance: distance(map.destinations[i], map.destinations[j]),
         start: map.destinations[i],

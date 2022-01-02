@@ -111,10 +111,12 @@ export function GameInterface({ game, players, username, id }: Props) {
         <Stack css={{ height: "100vh" }}>
           <PlayerBar username={username} />
           {engine.isEnded() ? <Scoreboard /> : null}
-          <CardBar
-            selectedLine={selectedLine}
-            setSelectedLine={setSelectedLine}
-          />
+          {engine.isStarted() ? (
+            <CardBar
+              selectedLine={selectedLine}
+              setSelectedLine={setSelectedLine}
+            />
+          ) : null}
           <Flex
             css={{
               flexGrow: 1,

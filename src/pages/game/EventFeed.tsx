@@ -23,7 +23,7 @@ export function EventFeed({ id }: { id: string }) {
         <div>
           {" "}
           <TimeAgo
-            date={event.timestamp.toDate()}
+            date={event.timestamp?.toDate()}
             css={{ color: "grey", fontSize: 10 }}
           />
           <div css={{ fontSize: 12 }}>{event.message}</div>

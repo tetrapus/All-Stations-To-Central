@@ -4,8 +4,14 @@ import "./index.css";
 import App from "./App";
 import * as serviceWorker from "./serviceWorker";
 import { initFirebase } from "init/firebase";
+import SeedRandom from "seed-random";
 
-initFirebase();
+if (process.env.REACT_APP_DEV_MODE === "true") {
+  SeedRandom("dev mode activated", { global: true });
+  initFirebase(true).then();
+} else {
+  initFirebase();
+}
 
 ReactDOM.render(
   <React.StrictMode>

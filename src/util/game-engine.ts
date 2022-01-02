@@ -1,17 +1,13 @@
 import { DEFAULT_MAP_SETTINGS, Game, Player } from "data/Game";
 import { GameEventConverter } from "data/GameEvent";
-import {
-  orderBy,
-  query,
-  runTransaction,
-  serverTimestamp,
-} from "firebase/firestore";
+import { orderBy, query, serverTimestamp } from "firebase/firestore";
 import { collectionRef, db, docRef, NewRecord } from "init/firebase";
 import React, { Context, useContext } from "react";
 import { useCollectionData } from "react-firebase-hooks/firestore";
 import { nOf } from "util/n-of";
 import { generateColor } from "./colorgen";
 import { generateMap } from "./mapgen";
+import { runTransaction } from "./run-game-action";
 
 const randomElement = (array: any[]) =>
   array[Math.floor(Math.random() * array.length)];
@@ -104,6 +100,10 @@ export class GameEngine {
 
   isActive(): boolean {
     return this.game.isReady && !this.isEnded();
+  }
+
+  isStarted(): boolean {
+    return this.game.isStarted;
   }
 
   canAct<T extends keyof Move>(

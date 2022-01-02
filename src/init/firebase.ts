@@ -1,10 +1,22 @@
 import { initializeApp } from "@firebase/app";
-import { collection, doc, FieldValue, getFirestore } from "@firebase/firestore";
+import {
+  collection,
+  disableNetwork,
+  doc,
+  enableIndexedDbPersistence,
+  FieldValue,
+  getFirestore,
+} from "@firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
 
 let initialised = false;
 
-export function initFirebase() {
+export async function initFirebase(devmode?: boolean) {
+  if (devmode) {
+    const db = getFirestore();
+    enableIndexedDbPersistence(db);
+    await disableNetwork(db);
+  }
   if (initialised) {
     return;
   }
@@ -23,7 +35,6 @@ export function initFirebase() {
   getAnalytics();
   initialised = true;
 }
-
 initFirebase();
 
 export const db = getFirestore();
